@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "odoo": {
+      "command": "/Users/darylyturraldelopez/Desktop/Odoo/clients/forum/odoo-mcp/.venv/bin/python",
+      "args": ["-m", "odoo_mcp"],
+      "cwd": "/Users/darylyturraldelopez/Desktop/Odoo/clients/forum/odoo-mcp",
+      "env": {
+        "ODOO_URL": "http://localhost:8088",
+        "ODOO_DB": "forumPrimate",
+        "ODOO_USERNAME": "claude_bot",
+        "ODOO_API_KEY": "REEMPLAZAR_POR_TU_API_KEY",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
