@@ -1,0 +1,706 @@
+// Sagui — identidad de marca (brand board). Tokens por ROL:
+//   base    #0F2B33  sidebar / superficies oscuras
+//   accent  #48B3A6  activo / links / highlights de marca
+//   surface #F4F6F6  superficie clara / texto sobre oscuro
+//   cta     #FF8A00  CTA / alertas — uso PUNTUAL (nunca de fondo)
+// Reemplaza la estética HUD vieja (periwinkle/ámbar).
+$sg-base:        #0F2B33;
+$sg-base-soft:   #163a44;          // hover sobre el sidebar oscuro
+$sg-accent:      #48B3A6;
+$sg-accent-deep: #1f6f64;          // teal oscurecido: fondos activos con TEXTO CLARO (contraste 4.5:1)
+$sg-surface:     #F4F6F6;
+$sg-cta:         #FF8A00;
+$sg-ink:         #0F2B33;          // texto principal sobre claro
+$sg-muted:       #5b6b6e;          // texto secundario sobre claro
+$sg-on-dark:     #F4F6F6;          // texto sobre oscuro
+$sg-on-dark-dim: #9fb0b2;          // texto atenuado sobre oscuro
+$sg-line:        #dfe5e5;          // bordes sobre claro
+$sg-mono:        "SFMono-Regular", ui-monospace, Menlo, monospace;
+$sg-font:        -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+
+@keyframes sg-pulse { 0%,100% { transform: scale(.8); opacity: .55; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes sg-slide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+.o_sagui_dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: $sg-accent; box-shadow: 0 0 10px rgba($sg-accent, .8);
+    animation: sg-pulse 1.8s ease-in-out infinite;
+    display: inline-block; flex: 0 0 auto;
+}
+
+// Marca textual (mientras no haya logo exportado: wordmark "Sagui AI").
+.o_sagui_wordmark {
+    font-weight: 800; font-size: 17px; letter-spacing: .2px; line-height: 1;
+    .o-accent { color: $sg-accent; }
+}
+.o_sagui_brandimg { height: 26px; width: auto; display: block; }
+
+// =====================================================================
+//  APP SHELL (client action de página completa)
+// =====================================================================
+.o_sagui_shell {
+    height: 100%; display: flex; background: $sg-surface; color: $sg-ink;
+    font-family: $sg-font; overflow: hidden;
+
+    // ---- sidebar oscuro ----
+    .o_sagui_sidebar {
+        flex: 0 0 260px; width: 260px; background: $sg-base; color: $sg-on-dark;
+        display: flex; flex-direction: column; min-height: 0;
+    }
+    .o_sagui_brand {
+        display: flex; align-items: center; gap: 10px;
+        padding: 18px 18px 16px; color: $sg-on-dark;
+        .o_sagui_wordmark { color: $sg-on-dark; }
+    }
+    .o_sagui_nav { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; overflow-y: auto; }
+    .o_sagui_navitem {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px; border-radius: 10px; cursor: pointer;
+        color: $sg-on-dark-dim; background: transparent; border: 0; width: 100%;
+        font-size: 14px; font-weight: 500; text-align: left;
+        transition: background-color .18s ease, color .18s ease;
+        svg { width: 19px; height: 19px; flex: 0 0 auto; }
+        &:hover { background: $sg-base-soft; color: $sg-on-dark; }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 2px; }
+        &.o-active {
+            background: $sg-accent-deep; color: #ffffff; font-weight: 600;
+        }
+    }
+    .o_sagui_sidefoot {
+        margin-top: auto; padding: 12px 18px; font-size: 11px; color: $sg-on-dark-dim;
+        border-top: 1px solid rgba($sg-on-dark, .08);
+    }
+
+    // ---- área principal clara ----
+    .o_sagui_main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .o_sagui_topbar {
+        flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+        padding: 14px 22px; border-bottom: 1px solid $sg-line; background: #fff;
+        .o_sagui_topttl { font-weight: 700; font-size: 16px; }
+        .o_sagui_topsub { color: $sg-muted; font-size: 12.5px; margin-left: 6px; }
+    }
+    .o_sagui_content { flex: 1; min-height: 0; overflow-y: auto; padding: 22px; }
+    .o_sagui_content--chat { padding: 0; }   // el chat maneja su propio padding
+}
+
+// ---- Inicio (home) ----
+.o_sagui_home {
+    max-width: 900px; margin: 0 auto;
+    .o_sagui_hello { font-size: 22px; font-weight: 800; color: $sg-ink; margin-bottom: 4px; }
+    .o_sagui_hellosub { color: $sg-muted; margin-bottom: 22px; }
+    .o_sagui_cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .o_sagui_card {
+        text-align: left; cursor: pointer; background: #fff; border: 1px solid $sg-line;
+        border-radius: 14px; padding: 16px; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        display: flex; flex-direction: column; gap: 6px;
+        svg { width: 22px; height: 22px; color: $sg-accent; }
+        .t { font-weight: 700; font-size: 14.5px; color: $sg-ink; }
+        .d { font-size: 12.5px; color: $sg-muted; }
+        &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba($sg-base, .10); border-color: rgba($sg-accent, .5); }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 2px; }
+    }
+}
+
+// ---- Historial (tabla del usage log) ----
+.o_sagui_history {
+    .o_sagui_table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;
+        border: 1px solid $sg-line; border-radius: 12px; overflow: hidden; }
+    .o_sagui_table th, .o_sagui_table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid $sg-line; }
+    .o_sagui_table th { background: #eef2f2; color: $sg-muted; font-weight: 600; text-transform: uppercase; font-size: 10.5px; letter-spacing: .5px; }
+    .o_sagui_table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .o_sagui_table tr:last-child td { border-bottom: 0; }
+    .o_sagui_empty2 { color: $sg-muted; padding: 24px; text-align: center; }
+}
+
+// ---- panel genérico (Conectores / Ajustes / Automatizaciones) ----
+.o_sagui_panelbox {
+    max-width: 640px; background: #fff; border: 1px solid $sg-line; border-radius: 14px; padding: 22px;
+    .h { font-weight: 700; font-size: 16px; color: $sg-ink; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+        svg { width: 20px; height: 20px; color: $sg-accent; } }
+    .p { color: $sg-muted; font-size: 13.5px; line-height: 1.5; margin-bottom: 14px; }
+    .o_sagui_kv { font-size: 13px; color: $sg-ink; margin: 4px 0; b { color: $sg-muted; font-weight: 600; } }
+}
+.o_sagui_btn {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    border: 0; border-radius: 10px; padding: 9px 16px; font-weight: 600; font-size: 13.5px;
+    background: $sg-accent; color: #07232a; transition: filter .18s ease, transform .18s ease;
+    &:hover { filter: brightness(.95); transform: translateY(-1px); }
+    &:focus-visible { outline: 2px solid $sg-base; outline-offset: 2px; }
+    &.o-cta { background: $sg-cta; color: #2b1500; }   // CTA puntual (naranja)
+}
+.o_sagui_soon { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: $sg-cta; background: rgba($sg-cta, .12); border-radius: 999px; padding: 3px 10px; }
+
+// ---- tarjetas de conector MCP (sección Conectores) ----
+.o_sagui_conncard {
+    border: 1px solid $sg-line; border-radius: 12px; padding: 16px; margin-top: 12px; background: #fff;
+    .o_sagui_conncard_head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .o_sagui_conncard_title { font-weight: 700; font-size: 14px; color: $sg-ink;
+        display: flex; align-items: center; gap: 8px; }
+    .o_sagui_chip { font-family: $sg-mono; font-size: 10px; color: $sg-accent-deep;
+        background: rgba($sg-accent, .14); border: 1px solid rgba($sg-accent, .35);
+        border-radius: 8px; padding: 2px 7px; text-transform: uppercase; }
+    .o_sagui_pill { margin-left: auto; font-size: 11px; font-weight: 700; border-radius: 999px;
+        padding: 3px 11px; color: $sg-muted; background: rgba($sg-muted, .12); }
+    .o_sagui_pill_ok { color: $sg-accent-deep; background: rgba($sg-accent, .16); }
+    .o_sagui_formrow { margin-top: 10px;
+        label { width: 92px; font-size: 12.5px; font-weight: 600; color: $sg-ink; flex: none; } }
+    input {
+        flex: 1; font-family: inherit; font-size: 13px; color: $sg-ink;
+        background: $sg-surface; border: 1px solid $sg-line; border-radius: 9px; padding: 9px 11px;
+        &::placeholder { color: $sg-muted; }
+        &:focus { outline: none; border-color: $sg-accent; box-shadow: 0 0 0 3px rgba($sg-accent, .25); }
+    }
+    .o_sagui_btn_ghost { background: transparent; color: $sg-muted; border: 1px solid $sg-line;
+        &:hover { filter: none; color: $sg-ink; border-color: $sg-muted; } }
+    .o_sagui_connmsg { margin-top: 10px; font-size: 12.5px; }
+    .o_sagui_connmsg_ok { color: $sg-accent-deep; }
+    .o_sagui_connmsg_err { color: $sg-cta; }
+    .o_sagui_conntools { margin-top: 10px; font-size: 12px; color: $sg-muted; word-break: break-word;
+        b { color: $sg-ink; } }
+}
+
+// ---- formulario de Ajustes (embebido) ----
+.o_sagui_form { display: flex; flex-direction: column; gap: 14px; }
+.o_sagui_field {
+    display: flex; flex-direction: column; gap: 5px;
+    span { font-size: 12.5px; font-weight: 600; color: $sg-ink; }
+    small { font-size: 11.5px; color: $sg-muted; }
+    input, textarea {
+        font-family: inherit; font-size: 13px; color: $sg-ink;
+        background: $sg-surface; border: 1px solid $sg-line; border-radius: 9px; padding: 9px 11px;
+        resize: vertical;
+        &::placeholder { color: $sg-muted; }
+        &:focus { outline: none; border-color: $sg-accent; box-shadow: 0 0 0 3px rgba($sg-accent, .25); }
+    }
+    .o-ok { color: $sg-accent-deep; } .o-warn { color: $sg-cta; }
+}
+.o_sagui_formrow { display: flex; align-items: center; gap: 12px; }
+.o_sagui_msg2 { font-size: 13px; color: $sg-muted; }
+.o_sagui_advlink { margin-top: 4px; a { font-size: 12px; color: $sg-accent-deep; } }
+
+// =====================================================================
+//  SYSTRAY (botón + panel flotante con el chat rápido)
+// =====================================================================
+.o_sagui_systray {
+    display: flex; align-items: center; position: relative;
+    .o_sagui_systray_btn {
+        display: flex; align-items: center; gap: 6px;
+        background: transparent; border: 0; color: inherit;
+        font-weight: 600; cursor: pointer; padding: 0 8px; height: 100%;
+        &:hover, &.o-active { color: $sg-accent; }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: -2px; }
+    }
+    .o_sagui_panel {
+        position: fixed; top: 48px; right: 8px; z-index: 1050;
+        width: 380px; max-height: 72vh;
+        border-radius: 16px; overflow: hidden;
+        box-shadow: 0 18px 50px rgba($sg-base, .35);
+        animation: sg-slide .18s ease-out;
+    }
+}
+
+// =====================================================================
+//  CHAT (compartido: systray compacto + Conversaciones full-page) — tema CLARO de marca
+// =====================================================================
+.o_sagui {
+    display: flex; flex-direction: column; height: 100%;
+    background: $sg-surface; color: $sg-ink; font-family: $sg-font;
+
+    &--compact { max-height: 72vh; background: #fff; border: 1px solid $sg-line; }
+
+    .o_sagui_head {
+        display: flex; align-items: center; gap: 8px;
+        padding: 12px 16px; border-bottom: 1px solid $sg-line; background: #fff;
+        .o_sagui_title { font-weight: 800; font-size: 14px; color: $sg-ink; .o-accent { color: $sg-accent; } }
+        .o_sagui_sub { margin-left: auto; font-size: 9.5px; letter-spacing: 1px;
+                        text-transform: uppercase; color: $sg-muted; }
+    }
+
+    .o_sagui_log { flex: 1; overflow-y: auto; padding: 16px; display: flex;
+                    flex-direction: column; gap: 12px; }
+    .o_sagui_empty { margin: auto; color: $sg-muted; font-size: 13px; text-align: center; }
+
+    .o_sagui_msg { display: flex; flex-direction: column; gap: 4px; max-width: 92%; }
+    .o_sagui_msg--user  { align-self: flex-end; align-items: flex-end; }
+    .o_sagui_msg--assistant { align-self: flex-start; }
+
+    .o_sagui_bubble {
+        white-space: pre-wrap; line-height: 1.5; font-size: 13.5px;
+        padding: 9px 13px; border-radius: 14px; word-break: break-word;
+        code { font-family: $sg-mono; font-size: .92em; background: rgba($sg-base, .08);
+               padding: 1px 5px; border-radius: 5px; }
+        strong { font-weight: 700; }
+    }
+    .o_sagui_msg--user .o_sagui_bubble { background: $sg-accent; color: #07232a; }
+    .o_sagui_msg--assistant .o_sagui_bubble { background: #fff; border: 1px solid $sg-line; color: $sg-ink; }
+
+    .o_sagui_tools { display: flex; flex-wrap: wrap; gap: 5px; }
+    .o_sagui_chip {
+        font-family: $sg-mono; font-size: 10px; color: $sg-accent-deep;
+        background: rgba($sg-accent, .14); border: 1px solid rgba($sg-accent, .35);
+        border-radius: 8px; padding: 2px 7px;
+        &::before { content: "● "; }
+        &.is-done { color: $sg-muted; opacity: .8; &::before { content: "✓ "; } }
+    }
+
+    .o_sagui_inputrow { display: flex; gap: 8px; padding: 12px 16px;
+                         border-top: 1px solid $sg-line; background: #fff; }
+    .o_sagui_input {
+        flex: 1; resize: none; min-height: 38px; max-height: 120px;
+        background: $sg-surface; border: 1px solid $sg-line;
+        border-radius: 10px; padding: 9px 11px; color: $sg-ink; font-size: 13px; font-family: inherit;
+        &::placeholder { color: $sg-muted; }
+        &:focus { outline: none; border-color: $sg-accent; box-shadow: 0 0 0 3px rgba($sg-accent, .25); }
+    }
+    .o_sagui_send {
+        width: 42px; border: 0; border-radius: 10px; cursor: pointer;
+        font-size: 15px; font-weight: 700; color: #07232a; background: $sg-accent;
+        transition: filter .18s ease;
+        &:hover:not(:disabled) { filter: brightness(.95); }
+        &:focus-visible { outline: 2px solid $sg-base; outline-offset: 2px; }
+        &:disabled { opacity: .45; cursor: default; }
+    }
+}
+
+// =====================================================================
+//  CONVERSACIONES — dos paneles (lista + chat persistido)
+// =====================================================================
+.o_sagui_convs { display: flex; height: 100%; min-height: 0; }
+
+.o_sagui_convlist {
+    flex: 0 0 280px; width: 280px; display: flex; flex-direction: column; min-height: 0;
+    background: #fff; border-right: 1px solid $sg-line;
+    .o_sagui_newconv {
+        display: flex; align-items: center; gap: 8px; justify-content: center;
+        margin: 12px; padding: 10px 12px; border: 0; border-radius: 10px; cursor: pointer;
+        background: $sg-accent; color: #07232a; font-weight: 600; font-size: 13.5px;
+        transition: filter .18s ease, transform .18s ease;
+        svg { width: 17px; height: 17px; }
+        &:hover { filter: brightness(.95); transform: translateY(-1px); }
+        &:focus-visible { outline: 2px solid $sg-base; outline-offset: 2px; }
+    }
+    .o_sagui_convitems { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 10px; }
+    .o_sagui_convempty { color: $sg-muted; font-size: 12.5px; text-align: center; padding: 20px 12px; }
+    .o_sagui_convitem {
+        display: flex; align-items: center; gap: 8px; cursor: pointer;
+        padding: 9px 10px; border-radius: 10px; border-left: 3px solid transparent;
+        transition: background-color .15s ease, border-color .15s ease;
+        .o_sagui_convmeta { flex: 1; min-width: 0; }
+        .t { font-size: 13px; font-weight: 600; color: $sg-ink; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .d { font-size: 11px; color: $sg-muted; }
+        .o_sagui_convdel {
+            flex: 0 0 auto; border: 0; background: transparent; cursor: pointer; color: $sg-muted;
+            padding: 4px; border-radius: 7px; opacity: 0; transition: opacity .15s ease, color .15s ease;
+            svg { width: 16px; height: 16px; display: block; }
+            &:hover { color: $sg-cta; background: rgba($sg-cta, .12); }
+            &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 1px; opacity: 1; }
+        }
+        &:hover { background: $sg-surface; .o_sagui_convdel { opacity: 1; } }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 2px; }
+        &.o-active {
+            background: rgba($sg-accent, .14); border-left-color: $sg-accent;
+            .t { color: $sg-accent-deep; }
+            .o_sagui_convdel { opacity: 1; }
+        }
+    }
+}
+.o_sagui_convchat { flex: 1; min-width: 0; display: flex; min-height: 0; }
+.o_sagui_convchat .o_sagui { flex: 1; }
+.o_sagui_convplaceholder { margin: auto; max-width: 360px; text-align: center; color: $sg-muted;
+    font-size: 13.5px; padding: 24px; }
+
+// ---- responsive: sidebar colapsa a una franja de íconos en pantallas chicas ----
+@media (max-width: 768px) {
+    .o_sagui_shell {
+        .o_sagui_sidebar { flex-basis: 64px; width: 64px; }
+        .o_sagui_brand .o_sagui_wordmark, .o_sagui_navitem span, .o_sagui_sidefoot { display: none; }
+        .o_sagui_navitem { justify-content: center; }
+    }
+    .o_sagui_convlist { flex-basis: 180px; width: 180px;
+        .o_sagui_newconv span { display: none; } }
+}
+
+// =====================================================================
+//  DASHBOARD de Historial — PREMIUM (Chart.js, marca Sagui)
+// =====================================================================
+.o_sgd {
+    position: relative;
+    $shadow:   0 1px 2px rgba($sg-base, .04), 0 2px 8px rgba($sg-base, .06);
+    $shadow-h: 0 4px 14px rgba($sg-base, .10), 0 2px 6px rgba($sg-base, .06);
+
+    // ---- header ----
+    .o_sgd_head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
+    .o_sgd_title { font-size: 20px; font-weight: 700; color: $sg-ink; margin: 0; }
+    .o_sgd_sub { font-size: 13px; color: $sg-muted; margin-top: 2px; }
+    .o_sgd_pills { margin-left: auto; display: inline-flex; background: #fff; border: 1px solid $sg-line;
+        border-radius: 11px; padding: 3px; gap: 2px; box-shadow: $shadow; }
+    .o_sgd_pill { border: 0; background: transparent; cursor: pointer; color: $sg-muted; font-weight: 600;
+        font-size: 12.5px; padding: 7px 15px; border-radius: 8px; transition: background .15s ease, color .15s ease;
+        &:hover { color: $sg-ink; }
+        &.o-active { background: $sg-accent; color: #07232a; }
+        &:focus-visible { outline: 2px solid $sg-base; outline-offset: 1px; } }
+
+    // ---- KPIs ----
+    .o_sgd_kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+    .o_sgd_kpi { background: #fff; border: 1px solid $sg-line; border-radius: 14px; padding: 18px 20px;
+        box-shadow: $shadow; animation: sgdIn .5s both; animation-delay: calc(var(--i, 0) * 55ms);
+        &.o-accent { background: linear-gradient(180deg, rgba($sg-accent, .09), #fff); border-color: rgba($sg-accent, .35); }
+        .o_sgd_kpi_top { display: flex; align-items: baseline; gap: 8px; }
+        .o_sgd_kpi_v { font-size: 30px; font-weight: 500; color: $sg-ink; line-height: 1.05;
+            font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+        .o_sgd_kpi_u { font-size: 12px; font-weight: 600; color: $sg-muted; margin: 0 0 0 2px; }
+        .o_sgd_kpi_slash { color: $sg-line; margin: 0 5px; font-weight: 300; }
+        .o_sgd_kpi_d { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+            font-variant-numeric: tabular-nums;
+            &.o-up { color: $sg-cta; background: rgba($sg-cta, .12); }
+            &.o-down { color: $sg-accent-deep; background: rgba($sg-accent, .16); } }
+        .o_sgd_kpi_l { font-size: 12px; color: $sg-muted; margin-top: 6px; } }
+
+    // ---- cards ----
+    .o_sgd_card { background: #fff; border: 1px solid $sg-line; border-radius: 16px; padding: 18px;
+        box-shadow: $shadow; transition: box-shadow .2s ease, transform .2s ease;
+        animation: sgdIn .5s both; animation-delay: calc(var(--i, 0) * 55ms);
+        &.o-span2 { margin-bottom: 16px; }
+        &:hover { box-shadow: $shadow-h; transform: translateY(-2px); } }
+    .o_sgd_card_h { display: flex; align-items: center; justify-content: space-between; font-weight: 700;
+        font-size: 14px; color: $sg-ink; margin-bottom: 14px;
+        .o_sgd_hint { font-weight: 400; font-size: 11.5px; color: $sg-muted; } }
+    .o_sgd_canvas { position: relative; height: 240px;
+        &.o-tall { height: 330px; } &.o-mid { height: 240px; } &.o-short { height: 130px; } }
+
+    // ---- grilla de secundarios ----
+    .o_sgd_grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px;
+        .o-grid-span2 { grid-column: 1 / -1; } }
+
+    // ---- doughnut + legend HTML ----
+    .o_sgd_donut { display: flex; align-items: center; gap: 14px;
+        .o_sgd_canvas { flex: 0 0 56%; } }
+    .o_sgd_legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0;
+        display: flex; flex-direction: column; gap: 8px;
+        li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: $sg-ink; }
+        .o_sgd_lg_l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            color: $sg-muted; font-family: $sg-mono; font-size: 11px; }
+        .o_sgd_lg_p { font-weight: 700; font-variant-numeric: tabular-nums; } }
+    .o_sgd_sw { width: 11px; height: 11px; border-radius: 3px; flex: none; display: inline-block; }
+
+    // ---- presupuesto ----
+    .o_sgd_budget_h { display: flex; align-items: center; justify-content: space-between; font-weight: 700;
+        font-size: 14px; color: $sg-ink; margin-bottom: 12px; }
+    .o_sgd_link { border: 0; background: transparent; color: $sg-accent-deep; font-weight: 600; font-size: 12px;
+        cursor: pointer; &:hover { text-decoration: underline; } }
+    .o_sgd_budget_track { height: 12px; background: $sg-surface; border-radius: 999px; overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba($sg-base, .06); }
+    .o_sgd_budget_fill { height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, $sg-accent, $sg-accent-deep);
+        transition: width .7s cubic-bezier(.2, .8, .2, 1);
+        &.o-over { background: linear-gradient(90deg, $sg-cta, #e07400); } }
+    .o_sgd_budget_foot { display: flex; justify-content: space-between; margin-top: 9px; font-size: 12.5px;
+        color: $sg-muted; font-variant-numeric: tabular-nums; b { color: $sg-ink; } .o-over { color: $sg-cta; font-weight: 700; } }
+    .o_sgd_budget_none { font-size: 13px; color: $sg-muted; }
+    .o_sgd_budget_edit { display: flex; align-items: center; gap: 8px; }
+    .o_sgd_currency { font-size: 13px; color: $sg-muted; font-weight: 600; }
+    .o_sgd_input { width: 130px; font-family: inherit; font-size: 13px; color: $sg-ink; background: $sg-surface;
+        border: 1px solid $sg-line; border-radius: 9px; padding: 8px 10px; font-variant-numeric: tabular-nums;
+        &:focus { outline: none; border-color: $sg-accent; box-shadow: 0 0 0 3px rgba($sg-accent, .25); } }
+    .o_sgd_btn { border: 0; border-radius: 9px; padding: 8px 14px; font-weight: 600; font-size: 12.5px;
+        cursor: pointer; background: $sg-accent; color: #07232a;
+        &.o-ghost { background: transparent; color: $sg-muted; border: 1px solid $sg-line; }
+        &:focus-visible { outline: 2px solid $sg-base; outline-offset: 2px; } }
+
+    // ---- empty / error ----
+    .o_sgd_empty { text-align: center; padding: 44px 24px; color: $sg-muted; background: #fff;
+        border: 1px solid $sg-line; border-radius: 16px; box-shadow: $shadow;
+        &.o-err { color: $sg-cta; }
+        .o_sgd_empty_ic { width: 52px; height: 52px; margin: 0 auto 14px; color: $sg-accent;
+            svg { width: 100%; height: 100%; } }
+        .o_sgd_empty_t { font-size: 15px; font-weight: 700; color: $sg-ink; }
+        .o_sgd_empty_s { font-size: 13px; margin-top: 4px; } }
+
+    // ---- skeletons (shimmer) ----
+    .o-skel { pointer-events: none; }
+    .o_sgd_sk { border-radius: 8px; background: linear-gradient(90deg, #eef2f2 25%, #e2e9e9 37%, #eef2f2 63%);
+        background-size: 400% 100%; animation: sgdShine 1.4s ease infinite;
+        &.o-sk-num { height: 30px; width: 60%; }
+        &.o-sk-lbl { height: 12px; width: 40%; margin-top: 12px; }
+        &.o-sk-chart { height: 240px; width: 100%; &.o-tall { height: 330px; } } }
+
+    // ---- drill-down: panel desde la DERECHA ----
+    .o_sgd_drill_back { position: fixed; inset: 0; background: rgba($sg-base, .35); z-index: 1040;
+        animation: sgdFade .2s ease; }
+    .o_sgd_drill { position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 94vw; z-index: 1050;
+        background: #fff; box-shadow: -16px 0 50px rgba($sg-base, .3); padding: 22px; overflow: auto;
+        animation: sgdSlide .26s cubic-bezier(.2, .8, .2, 1); }
+    .o_sgd_drill_h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .o_sgd_drill_t { font-weight: 800; font-size: 16px; color: $sg-ink; max-width: 360px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .o_sgd_drill_s { font-size: 12.5px; color: $sg-muted; margin-top: 5px; b { color: $sg-ink; } }
+    .o_sgd_tag { display: inline-block; background: rgba($sg-accent, .14); color: $sg-accent-deep;
+        border-radius: 6px; padding: 1px 7px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; }
+    .o_sgd_drill_x { margin-left: auto; border: 0; background: $sg-surface; border-radius: 9px; width: 32px;
+        height: 32px; font-size: 20px; line-height: 1; cursor: pointer; color: $sg-muted; flex: none;
+        &:hover { color: $sg-ink; } &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 2px; } }
+    .o_sgd_drill_tbl { width: 100%; border-collapse: collapse; font-size: 12.5px;
+        th { text-align: left; color: $sg-muted; font-weight: 600; padding: 8px; border-bottom: 2px solid $sg-line; }
+        th.num { text-align: right; }
+        td { padding: 9px 8px; border-bottom: 1px solid $sg-line; color: $sg-ink; }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        td.o-idx { color: $sg-muted; }
+        td.o-model { font-family: $sg-mono; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+        td.o-cost { font-weight: 700; }
+        tr:last-child td { border-bottom: 0; } }
+}
+
+@keyframes sgdIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sgdShine { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes sgdSlide { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes sgdFade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 980px) {
+    .o_sgd .o_sgd_kpis { grid-template-columns: repeat(2, 1fr); }
+    .o_sgd .o_sgd_grid { grid-template-columns: 1fr; .o-grid-span2 { grid-column: auto; } }
+    .o_sgd .o_sgd_donut { flex-direction: column; .o_sgd_canvas { flex: none; width: 100%; } }
+}
+
+// =====================================================================
+//  AUTOMATIZACIONES (digests/alertas read-only) — marca Sagui
+// =====================================================================
+.o_sga {
+    $shadow: 0 1px 2px rgba($sg-base, .04), 0 2px 8px rgba($sg-base, .06);
+
+    .o_sga_head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+    .o_sga_title { font-size: 20px; font-weight: 700; color: $sg-ink; margin: 0;
+        display: flex; align-items: center; gap: 10px; }
+    .o_sga_ro { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+        color: $sg-accent-deep; background: rgba($sg-accent, .16); border-radius: 999px; padding: 3px 9px; }
+    .o_sga_sub { font-size: 13px; color: $sg-muted; margin-top: 3px; }
+
+    // botones
+    .o_sga_btn { margin-left: 0; border: 1px solid $sg-line; background: #fff; color: $sg-ink;
+        border-radius: 9px; padding: 8px 14px; font-weight: 600; font-size: 12.5px; cursor: pointer;
+        transition: background .15s ease, border-color .15s ease;
+        &:hover { border-color: $sg-muted; }
+        &.o-primary { background: $sg-accent; color: #07232a; border-color: $sg-accent; &:hover { filter: brightness(.96); } }
+        &.o-ghost { color: $sg-muted; }
+        &:disabled { opacity: .5; cursor: default; }
+        &:focus-visible { outline: 2px solid $sg-base; outline-offset: 2px; } }
+    .o_sga_head .o_sga_btn { margin-left: auto; }
+    .o_sga_iconbtn { border: 0; background: transparent; cursor: pointer; color: $sg-muted; font-size: 15px;
+        width: 30px; height: 30px; border-radius: 8px; line-height: 1;
+        &:hover { background: $sg-surface; color: $sg-ink; }
+        &.o-danger:hover { color: $sg-cta; }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: 1px; } }
+
+    // empty / error
+    .o_sga_empty { text-align: center; padding: 40px 24px; color: $sg-muted; background: #fff;
+        border: 1px solid $sg-line; border-radius: 16px; box-shadow: $shadow;
+        &.o-err { color: $sg-cta; }
+        .o_sga_empty_t { font-size: 15px; font-weight: 700; color: $sg-ink; }
+        .o_sga_empty_s { font-size: 13px; margin: 4px 0 14px; } }
+
+    // lista de cards
+    .o_sga_list { display: flex; flex-direction: column; gap: 12px; }
+    .o_sga_card { display: flex; gap: 16px; align-items: flex-start; background: #fff; border: 1px solid $sg-line;
+        border-radius: 14px; padding: 16px 18px; box-shadow: $shadow; transition: box-shadow .2s ease;
+        &:hover { box-shadow: 0 4px 14px rgba($sg-base, .10); }
+        &.o-off { opacity: .62; } }
+    .o_sga_card_main { flex: 1; min-width: 0; }
+    .o_sga_card_top { display: flex; align-items: center; gap: 8px; }
+    .o_sga_dot { width: 8px; height: 8px; border-radius: 50%; background: $sg-cta; flex: none; }
+    .o_sga_name { font-weight: 700; font-size: 14.5px; color: $sg-ink; }
+    .o_sga_pill { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px;
+        &.o-ok { color: $sg-accent-deep; background: rgba($sg-accent, .16); }
+        &.o-muted { color: $sg-muted; background: rgba($sg-muted, .12); }
+        &.o-err { color: $sg-cta; background: rgba($sg-cta, .12); }
+        &.o-warn { color: #9a6a00; background: rgba($sg-cta, .14); } }
+    .o_sga_meta { font-size: 12px; color: $sg-muted; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px;
+        .o_sga_sep { opacity: .5; } }
+    .o_sga_instr { font-size: 12.5px; color: $sg-ink; margin-top: 8px;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .o_sga_lastres { font-size: 12px; color: $sg-ink; margin-top: 10px; padding: 10px 12px; cursor: pointer;
+        background: rgba($sg-accent, .07); border: 1px solid rgba($sg-accent, .25); border-radius: 10px;
+        b { color: $sg-accent-deep; }
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .o_sga_card_actions { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap;
+        justify-content: flex-end; max-width: 280px; }
+
+    // toggle switch
+    .o_sga_switch { position: relative; display: inline-block; width: 38px; height: 22px; cursor: pointer;
+        input { opacity: 0; width: 0; height: 0; }
+        .o_sga_slider { position: absolute; inset: 0; background: $sg-line; border-radius: 999px; transition: background .2s ease;
+            &::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px;
+                background: #fff; border-radius: 50%; transition: transform .2s ease; box-shadow: 0 1px 2px rgba($sg-base, .3); } }
+        input:checked + .o_sga_slider { background: $sg-accent; }
+        input:checked + .o_sga_slider::before { transform: translateX(16px); }
+        input:focus-visible + .o_sga_slider { outline: 2px solid $sg-base; outline-offset: 2px; } }
+
+    // modal (editor / resultado)
+    .o_sga_back { position: fixed; inset: 0; background: rgba($sg-base, .35); z-index: 1040; }
+    .o_sga_modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050;
+        width: 560px; max-width: 94vw; max-height: 86vh; overflow: auto; background: #fff; border-radius: 16px;
+        box-shadow: 0 24px 60px rgba($sg-base, .4); padding: 22px;
+        display: flex; flex-direction: column; gap: 14px; }
+    .o_sga_modal_h { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; color: $sg-ink;
+        .o_sga_iconbtn { margin-left: auto; font-size: 20px; } }
+    .o_sga_field { display: flex; flex-direction: column; gap: 5px;
+        span { font-size: 12.5px; font-weight: 600; color: $sg-ink; } }
+    .o_sga_input { font-family: inherit; font-size: 13px; color: $sg-ink; background: $sg-surface;
+        border: 1px solid $sg-line; border-radius: 9px; padding: 9px 11px;
+        &::placeholder { color: $sg-muted; }
+        &:focus { outline: none; border-color: $sg-accent; box-shadow: 0 0 0 3px rgba($sg-accent, .25); } }
+    .o_sga_textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+    .o_sga_row { display: flex; gap: 12px; flex-wrap: wrap; .o_sga_field { flex: 1; min-width: 130px; } }
+    .o_sga_deliv { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        .o_sga_deliv_t { font-size: 12.5px; font-weight: 600; color: $sg-ink; } }
+    .o_sga_check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: $sg-muted; cursor: pointer; }
+    .o_sga_modal_foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+    .o_sga_res { white-space: pre-wrap; line-height: 1.5; font-size: 13px; color: $sg-ink; background: $sg-surface;
+        border: 1px solid $sg-line; border-radius: 10px; padding: 14px;
+        &.o-muted { color: $sg-muted; } &.o-err { color: $sg-cta; } }
+}
+
+// ---- Automatizaciones FASE 2 (tabs, inbox, scope, kill) ----
+.o_sga {
+    .o_sga_head_r { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+    .o_sga_kill { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+        color: $sg-muted; cursor: pointer; input { accent-color: $sg-cta; } }
+    .o_sga_killbar { background: rgba($sg-cta, .12); color: #9a4d00; border: 1px solid rgba($sg-cta, .35);
+        border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+
+    // tabs
+    .o_sga_tabs { display: flex; gap: 4px; border-bottom: 1px solid $sg-line; margin-bottom: 16px; }
+    .o_sga_tab { border: 0; background: transparent; cursor: pointer; color: $sg-muted; font-weight: 600;
+        font-size: 13px; padding: 9px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+        display: flex; align-items: center; gap: 7px;
+        &:hover { color: $sg-ink; }
+        &.o-active { color: $sg-ink; border-bottom-color: $sg-accent; }
+        &:focus-visible { outline: 2px solid $sg-accent; outline-offset: -2px; } }
+    .o_sga_badge { background: $sg-cta; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px;
+        min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; }
+
+    // badges de modo / pendientes en las cards
+    .o_sga_mode { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+        border-radius: 999px; padding: 2px 8px;
+        &.o-ro { color: $sg-accent-deep; background: rgba($sg-accent, .16); }
+        &.o-prop { color: #9a6a00; background: rgba($sg-cta, .14); }
+        &.o-auto { color: #07232a; background: rgba($sg-accent, .35); } }
+    .o_sga_pend { font-size: 10.5px; font-weight: 700; color: #9a4d00; background: rgba($sg-cta, .12);
+        border-radius: 999px; padding: 2px 8px; }
+
+    // inbox: grupos + propuestas
+    .o_sga_group { background: #fff; border: 1px solid $sg-line; border-radius: 14px; padding: 16px;
+        margin-bottom: 14px; box-shadow: 0 1px 2px rgba($sg-base, .04), 0 2px 8px rgba($sg-base, .06); }
+    .o_sga_group_h { display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+        .o_sga_group_t { font-weight: 700; font-size: 14.5px; color: $sg-ink; }
+        .o_sga_group_s { font-size: 12px; color: $sg-muted; margin-left: 8px; }
+        .o_sga_group_act { margin-left: auto; display: flex; gap: 8px; } }
+    .o_sga_prop { border: 1px solid $sg-line; border-radius: 11px; padding: 12px 14px; margin-top: 10px;
+        background: $sg-surface; }
+    .o_sga_prop_top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .o_sga_op { font-size: 10px; font-weight: 700; text-transform: uppercase; border-radius: 6px; padding: 2px 7px;
+        &.o-create { color: $sg-accent-deep; background: rgba($sg-accent, .18); }
+        &.o-write { color: #9a6a00; background: rgba($sg-cta, .16); }
+        &.o-unlink { color: $sg-cta; background: rgba($sg-cta, .14); } }
+    .o_sga_prop_model { font-family: $sg-mono; font-size: 11px; color: $sg-ink; }
+    .o_sga_prop_n { font-size: 11px; color: $sg-muted; }
+    .o_sga_prop_reason { font-size: 10.5px; color: $sg-muted; font-style: italic; margin-left: auto; }
+    .o_sga_prop_sum { font-size: 12.5px; color: $sg-ink; margin: 8px 0; }
+    .o_sga_diff { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 6px 0 10px; background: #fff;
+        border-radius: 8px; overflow: hidden;
+        th { text-align: left; color: $sg-muted; font-weight: 600; padding: 5px 8px; border-bottom: 1px solid $sg-line; }
+        td { padding: 5px 8px; border-bottom: 1px solid $sg-line; vertical-align: top; }
+        td.o-f { font-family: $sg-mono; color: $sg-ink; }
+        td.o-b { color: $sg-muted; text-decoration: line-through; }
+        td.o-a { color: $sg-accent-deep; font-weight: 600; }
+        tr:last-child td { border-bottom: 0; } }
+    .o_sga_prop_act { display: flex; gap: 8px; }
+    .o_sga_btn.o-sm { padding: 5px 11px; font-size: 12px; }
+
+    // scope en el editor
+    .o_sga_scope { border: 1px dashed rgba($sg-accent, .5); border-radius: 11px; padding: 14px;
+        display: flex; flex-direction: column; gap: 12px; background: rgba($sg-accent, .04); }
+    .o_sga_scope_h { font-weight: 700; font-size: 12.5px; color: $sg-ink;
+        span { font-weight: 400; color: $sg-muted; font-size: 11.5px; } }
+    .o_sga_ops { display: flex; gap: 14px; padding-top: 4px; }
+    .o_sga_unlink { font-size: 12.5px; color: $sg-ink; }
+
+    // resultado / simulación
+    .o_sga_resbar { display: flex; gap: 8px; }
+    .o_sga_simnote { font-size: 12.5px; color: $sg-muted; }
+    .o_sga_simlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+        li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; padding: 8px 10px;
+            background: $sg-surface; border: 1px solid $sg-line; border-radius: 9px; }
+        .o_sga_sim_sum { color: $sg-ink; flex: 1; min-width: 160px; } }
+    .o_sga_pill { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px;
+        &.o-ok { color: $sg-accent-deep; background: rgba($sg-accent, .16); }
+        &.o-warn { color: #9a4d00; background: rgba($sg-cta, .14); } }
+}
+
+// ---- Recetas (biblioteca + editor + runner). Reusa estilos de .o_sga ----
+.o_sgr {
+    $shadow: 0 1px 2px rgba($sg-base, .04), 0 2px 8px rgba($sg-base, .06);
+    .o_sgr_filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .o_sgr_search { flex: 1; min-width: 180px; }
+    .o_sgr_catsel { width: 220px; }
+
+    .o_sgr_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .o_sgr_card { background: #fff; border: 1px solid $sg-line; border-radius: 14px; padding: 16px;
+        box-shadow: $shadow; display: flex; flex-direction: column; gap: 8px; transition: box-shadow .2s ease, transform .2s ease;
+        &:hover { box-shadow: 0 4px 14px rgba($sg-base, .10); transform: translateY(-2px); } }
+    .o_sgr_card_h { display: flex; align-items: flex-start; gap: 8px; }
+    .o_sgr_name { font-weight: 700; font-size: 14.5px; color: $sg-ink; flex: 1; }
+    .o_sgr_star { border: 0; background: transparent; cursor: pointer; font-size: 18px; line-height: 1;
+        color: $sg-line; &.o-on { color: $sg-cta; } &:hover { color: $sg-cta; } }
+    .o_sgr_badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .o_sgr_cat { font-size: 10.5px; font-weight: 600; color: $sg-muted; background: $sg-surface;
+        border-radius: 999px; padding: 2px 8px; }
+    .o_sgr_shared { font-size: 10.5px; color: $sg-accent-deep; font-weight: 600; }
+    .o_sgr_file { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9a6a00;
+        background: rgba($sg-cta, .12); border-radius: 999px; padding: 2px 7px; }
+    .o_sgr_desc { font-size: 12.5px; color: $sg-muted; line-height: 1.45;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .o_sgr_tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .o_sgr_tag { font-size: 10.5px; color: $sg-accent-deep; background: rgba($sg-accent, .12); border-radius: 6px; padding: 1px 7px; }
+    .o_sgr_card_act { display: flex; gap: 6px; align-items: center; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
+
+    // editor params
+    .o_sgr_modal { width: 640px; }
+    .o_sgr_shared_chk { align-self: end; padding-bottom: 9px; }
+    .o_sgr_params { border: 1px dashed $sg-line; border-radius: 11px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .o_sgr_params_h { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 12.5px; color: $sg-ink; }
+    .o_sgr_params_empty { font-size: 12px; color: $sg-muted; }
+    .o_sgr_param { display: flex; gap: 6px; align-items: center;
+        .o_sga_input { padding: 6px 9px; font-size: 12px; }
+        .o-k { width: 96px; } .o-l { flex: 1; min-width: 80px; } .o-t { width: 104px; } .o-x { flex: 1; min-width: 90px; }
+        .o-r { font-size: 11px; color: $sg-muted; white-space: nowrap; } }
+
+    // runner
+    .o_sgr_run_desc { font-size: 13px; color: $sg-muted; }
+    .o_sgr_req { color: $sg-cta; }
+    .o_sgr_noparams { font-size: 12.5px; color: $sg-muted; }
+    .o_sgr_run_foot { justify-content: space-between; }
+    .o_sgr_result { border-top: 1px solid $sg-line; margin-top: 6px; padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .o_sgr_res_h { font-weight: 700; font-size: 13px; color: $sg-ink; }
+    .o_sgr_out { white-space: pre-wrap; line-height: 1.5; font-size: 13px; color: $sg-ink; background: $sg-surface;
+        border: 1px solid $sg-line; border-radius: 10px; padding: 14px; }
+    .o_sgr_dl { align-self: flex-start; text-decoration: none; }
+    .o_sgr_pend_h { font-weight: 700; font-size: 12.5px; color: $sg-ink; }
+    .o_sgr_pend { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px;
+        background: $sg-surface; border: 1px solid $sg-line; border-radius: 9px; font-size: 12.5px; }
+    .o_sgr_pend_sum { flex: 1; min-width: 160px; color: $sg-ink; }
+    .o_sgr_sched_note { font-size: 12.5px; color: $sg-muted; }
+}
+
+// ---- accesibilidad: respetar movimiento reducido ----
+@media (prefers-reduced-motion: reduce) {
+    .o_sagui_dot { animation: none; }
+    .o_sagui_systray .o_sagui_panel { animation: none; }
+    .o_sagui_navitem, .o_sagui_card, .o_sagui_btn, .o_sagui_send,
+    .o_sagui_newconv, .o_sagui_convitem, .o_sagui_convdel { transition: none; }
+    .o_sagui_card:hover, .o_sagui_btn:hover, .o_sagui_newconv:hover { transform: none; }
+    .o_sgd_pill, .o_sgd_card { transition: none; }
+    .o_sgd_kpi, .o_sgd_card { animation: none; }
+    .o_sgd_drill, .o_sgd_drill_back { animation: none; }
+    .o_sgd_sk { animation: none; }
+    .o_sgd_card:hover { transform: none; }
+}

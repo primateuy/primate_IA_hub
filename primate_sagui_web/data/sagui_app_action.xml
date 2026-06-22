@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- App de página completa: client action Owl 'primate_sagui_app'. -->
+  <record id="action_sagui_app" model="ir.actions.client">
+    <field name="name">Sagui</field>
+    <field name="tag">primate_sagui_app</field>
+  </record>
+
+  <!-- Menú raíz como app (con web_icon para que figure en el menú de aplicaciones). -->
+  <menuitem id="menu_sagui_root" name="Sagui" sequence="5"
+            web_icon="primate_sagui_web,static/description/icon.png"/>
+  <menuitem id="menu_sagui_app" name="Asistente" parent="menu_sagui_root"
+            action="action_sagui_app" sequence="1"/>
+</odoo>

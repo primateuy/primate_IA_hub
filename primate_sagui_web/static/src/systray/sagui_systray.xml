@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiSystray">
+    <div class="o_sagui_systray" t-ref="root">
+      <button class="o_sagui_systray_btn" t-on-click.stop="toggle" title="Sagui"
+              t-att-class="{ 'o-active': state.open }">
+        <span class="o_sagui_dot"/>
+        <span class="o_sagui_systray_label">Sagui</span>
+      </button>
+      <!-- El panel se MANTIENE montado (oculto con d-none) para no perder la conversación
+           al cerrar/abrir; el chat conserva su estado entre toggles. -->
+      <div class="o_sagui_panel" t-att-class="{ 'd-none': !state.open }">
+        <SaguiChat compact="true"/>
+      </div>
+    </div>
+  </t>
+</templates>

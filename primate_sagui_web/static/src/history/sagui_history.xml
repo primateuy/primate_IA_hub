@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiHistory">
+    <div class="o_sgd">
+
+      <!-- ===== Header ===== -->
+      <div class="o_sgd_head">
+        <div class="o_sgd_head_l">
+          <h2 class="o_sgd_title">Consumo de IA</h2>
+          <div class="o_sgd_sub">Costo y tokens por acción, modelo y período</div>
+        </div>
+        <div class="o_sgd_pills" role="group" aria-label="Rango temporal">
+          <button t-foreach="[{key:'7',label:'7 días'},{key:'30',label:'30 días'},{key:'all',label:'Todo'}]"
+                  t-as="p" t-key="p.key" type="button"
+                  class="o_sgd_pill" t-att-class="{ 'o-active': state.range === p.key }"
+                  t-att-aria-pressed="state.range === p.key ? 'true' : 'false'"
+                  t-on-click="() => this.setRange(p.key)">
+            <t t-esc="p.label"/>
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== Loading: skeletons con shimmer ===== -->
+      <t t-if="state.loading">
+        <div class="o_sgd_kpis">
+          <div class="o_sgd_kpi o-skel" t-foreach="[1,2,3,4]" t-as="n" t-key="n">
+            <div class="o_sgd_sk o-sk-num"/><div class="o_sgd_sk o-sk-lbl"/>
+          </div>
+        </div>
+        <div class="o_sgd_card o-span2 o-skel"><div class="o_sgd_sk o-sk-chart o-tall"/></div>
+        <div class="o_sgd_grid">
+          <div class="o_sgd_card o-skel" t-foreach="[1,2,3]" t-as="n" t-key="n"><div class="o_sgd_sk o-sk-chart"/></div>
+        </div>
+      </t>
+
+      <t t-elif="state.error"><div class="o_sgd_empty o-err"><t t-esc="state.error"/></div></t>
+
+      <t t-elif="!hasData">
+        <div class="o_sgd_empty">
+          <div class="o_sgd_empty_ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/>
+            </svg>
+          </div>
+          <div class="o_sgd_empty_t">Todavía no hay consumo en este período</div>
+          <div class="o_sgd_empty_s">Probá con un rango más amplio o empezá a usar Sagui.</div>
+        </div>
+      </t>
+
+      <!-- ===== Dashboard ===== -->
+      <t t-else="">
+        <!-- KPIs con count-up + delta -->
+        <div class="o_sgd_kpis">
+          <div class="o_sgd_kpi" style="--i:0">
+            <div class="o_sgd_kpi_top">
+              <span class="o_sgd_kpi_v"><t t-esc="kCost"/></span>
+              <t t-if="costDelta !== null">
+                <span class="o_sgd_kpi_d" t-att-class="costDeltaUp ? 'o-up' : 'o-down'">
+                  <t t-esc="costDeltaUp ? '▲' : '▼'"/> <t t-esc="costDeltaAbs"/>%
+                </span>
+              </t>
+            </div>
+            <div class="o_sgd_kpi_l">Costo total</div>
+          </div>
+          <div class="o_sgd_kpi" style="--i:1">
+            <div class="o_sgd_kpi_top">
+              <span class="o_sgd_kpi_v">
+                <t t-esc="kIn"/><span class="o_sgd_kpi_u">in</span>
+                <span class="o_sgd_kpi_slash">/</span>
+                <t t-esc="kOut"/><span class="o_sgd_kpi_u">out</span>
+              </span>
+            </div>
+            <div class="o_sgd_kpi_l">Tokens</div>
+          </div>
+          <div class="o_sgd_kpi o-accent" style="--i:2">
+            <div class="o_sgd_kpi_top">
+              <span class="o_sgd_kpi_v"><t t-esc="kSaving"/></span>
+            </div>
+            <div class="o_sgd_kpi_l">Ahorro por caché</div>
+          </div>
+          <div class="o_sgd_kpi" style="--i:3">
+            <div class="o_sgd_kpi_top">
+              <span class="o_sgd_kpi_v"><t t-esc="kActions"/></span>
+            </div>
+            <div class="o_sgd_kpi_l">Acciones</div>
+          </div>
+        </div>
+
+        <!-- Principal: costo por acción (full width) -->
+        <div class="o_sgd_card o-span2" style="--i:4">
+          <div class="o_sgd_card_h">
+            <span>Costo por acción</span>
+            <span class="o_sgd_hint">click en una barra → detalle</span>
+          </div>
+          <div class="o_sgd_canvas o-tall"><canvas t-ref="chartAction" aria-label="Costo por acción"/></div>
+        </div>
+
+        <!-- Grilla de secundarios -->
+        <div class="o_sgd_grid">
+          <!-- doughnut por modelo + legend HTML -->
+          <div class="o_sgd_card" style="--i:5">
+            <div class="o_sgd_card_h"><span>Por modelo</span></div>
+            <div class="o_sgd_donut">
+              <div class="o_sgd_canvas o-mid"><canvas t-ref="chartModel" aria-label="Costo por modelo"/></div>
+              <ul class="o_sgd_legend">
+                <li t-foreach="modelLegend" t-as="m" t-key="m_index">
+                  <span class="o_sgd_sw" t-attf-style="background:{{m.color}}"/>
+                  <span class="o_sgd_lg_l" t-att-title="m.label"><t t-esc="m.label"/></span>
+                  <span class="o_sgd_lg_p"><t t-esc="m.pct"/>%</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- por usuario / tu consumo -->
+          <div class="o_sgd_card" style="--i:6">
+            <div class="o_sgd_card_h">
+              <span><t t-if="state.data.is_manager">Por usuario</t><t t-else="">Tu consumo</t></span>
+            </div>
+            <div class="o_sgd_canvas o-mid"><canvas t-ref="chartUser" aria-label="Costo por usuario"/></div>
+          </div>
+
+          <!-- consumo en el tiempo (full width dentro de la grilla) -->
+          <div class="o_sgd_card o-grid-span2" style="--i:7">
+            <div class="o_sgd_card_h"><span>Consumo en el tiempo</span></div>
+            <div class="o_sgd_canvas o-mid"><canvas t-ref="chartTime" aria-label="Costo en el tiempo"/></div>
+          </div>
+
+          <!-- ahorro por caché -->
+          <div class="o_sgd_card" style="--i:8">
+            <div class="o_sgd_card_h"><span>Ahorro por caché</span></div>
+            <div class="o_sgd_canvas o-short"><canvas t-ref="chartCache" aria-label="Ahorro por caché"/></div>
+          </div>
+        </div>
+
+        <!-- Barra de presupuesto -->
+        <div class="o_sgd_card o-span2 o_sgd_budget" style="--i:9">
+          <div class="o_sgd_budget_h">
+            <span>Presupuesto mensual</span>
+            <t t-if="!state.budgetEdit">
+              <button t-if="state.data.is_manager" type="button" class="o_sgd_link" t-on-click="openBudgetEdit">
+                <t t-esc="state.data.budget.limit ? 'editar' : 'definir'"/>
+              </button>
+            </t>
+          </div>
+
+          <t t-if="state.budgetEdit">
+            <div class="o_sgd_budget_edit">
+              <span class="o_sgd_currency">US$</span>
+              <input type="number" min="0" step="1" class="o_sgd_input" t-model="state.budgetInput"
+                     placeholder="0.00" aria-label="Presupuesto mensual"/>
+              <button type="button" class="o_sgd_btn" t-on-click="saveBudget">Guardar</button>
+              <button type="button" class="o_sgd_btn o-ghost" t-on-click="() => state.budgetEdit = false">Cancelar</button>
+            </div>
+          </t>
+          <t t-elif="state.data.budget.limit">
+            <div class="o_sgd_budget_track">
+              <div class="o_sgd_budget_fill" t-att-class="{ 'o-over': budgetOver }"
+                   t-attf-style="width:{{budgetPct}}%"/>
+            </div>
+            <div class="o_sgd_budget_foot">
+              <span><b><t t-esc="money2(state.data.budget.spent)"/></b> de <t t-esc="money2(state.data.budget.limit)"/> este mes</span>
+              <span t-att-class="budgetOver ? 'o-over' : ''"><t t-esc="pct(budgetPct)"/></span>
+            </div>
+          </t>
+          <t t-else="">
+            <div class="o_sgd_budget_none">
+              Sin presupuesto definido. <t t-esc="money2(state.data.budget.spent)"/> gastados este mes.
+            </div>
+          </t>
+        </div>
+      </t>
+
+      <!-- ===== Drill-down (panel desde la derecha) ===== -->
+      <t t-if="state.drill">
+        <div class="o_sgd_drill_back" t-on-click="closeDrill"/>
+        <div class="o_sgd_drill" role="dialog" aria-label="Detalle de la acción">
+          <div class="o_sgd_drill_h">
+            <div class="o_sgd_drill_ttl">
+              <div class="o_sgd_drill_t" t-att-title="state.drill.label"><t t-esc="state.drill.label"/></div>
+              <div class="o_sgd_drill_s">
+                <t t-if="state.drill.action_type_label"><span class="o_sgd_tag"><t t-esc="state.drill.action_type_label"/></span></t>
+                <t t-if="state.drill.calls !== undefined"> <t t-esc="state.drill.calls"/> operación(es)</t>
+                <t t-if="state.drill.cost !== undefined"> · <b><t t-esc="money(state.drill.cost)"/></b></t>
+                <t t-if="state.drill.user"> · <t t-esc="state.drill.user"/></t>
+              </div>
+            </div>
+            <button type="button" class="o_sgd_drill_x" t-on-click="closeDrill" aria-label="Cerrar">×</button>
+          </div>
+          <t t-if="state.drillLoading"><div class="o_sgd_empty">Cargando…</div></t>
+          <t t-elif="state.drill.error"><div class="o_sgd_empty o-err"><t t-esc="state.drill.error"/></div></t>
+          <t t-else="">
+            <table class="o_sgd_drill_tbl">
+              <thead>
+                <tr><th>#</th><th>Modelo</th><th class="num">in</th><th class="num">out</th>
+                  <th class="num">caché</th><th class="num">Costo</th></tr>
+              </thead>
+              <tbody>
+                <tr t-foreach="state.drill.ops" t-as="op" t-key="op.id">
+                  <td class="o-idx"><t t-esc="op_index + 1"/></td>
+                  <td class="o-model"><span class="o_sgd_sw" t-attf-style="background:{{opColor(op.model)}}"/><t t-esc="op.model"/></td>
+                  <td class="num"><t t-esc="tokens(op.input_tokens)"/></td>
+                  <td class="num"><t t-esc="tokens(op.output_tokens)"/></td>
+                  <td class="num"><t t-esc="tokens(op.cache_read_tokens)"/></td>
+                  <td class="num o-cost"><t t-esc="money(op.cost)"/></td>
+                </tr>
+              </tbody>
+            </table>
+            <t t-if="!state.drill.ops.length"><div class="o_sgd_empty">Esta acción no tiene operaciones registradas.</div></t>
+          </t>
+        </div>
+      </t>
+    </div>
+  </t>
+</templates>

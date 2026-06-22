@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiChat">
+    <div class="o_sagui" t-att-class="{ 'o_sagui--compact': props.compact }">
+      <div class="o_sagui_head">
+        <span class="o_sagui_dot"/>
+        <span class="o_sagui_title">Sagui<span class="o-accent"> AI</span></span>
+        <span class="o_sagui_sub">asistente</span>
+      </div>
+
+      <div class="o_sagui_log" t-ref="scroller" t-on-scroll="onScroll">
+        <t t-if="!state.messages.length">
+          <div class="o_sagui_empty">Preguntame algo sobre tus datos de Odoo.</div>
+        </t>
+        <t t-foreach="state.messages" t-as="m" t-key="m_index">
+          <div t-att-class="'o_sagui_msg o_sagui_msg--' + m.role">
+            <t t-if="m.tools and m.tools.length">
+              <div class="o_sagui_tools">
+                <t t-foreach="m.tools" t-as="tool" t-key="tool_index">
+                  <span class="o_sagui_chip" t-att-class="{ 'is-done': tool.phase === 'done' }">
+                    <t t-esc="tool.name"/>
+                  </span>
+                </t>
+              </div>
+            </t>
+            <!-- Render markdown -> HTML seguro (t-out con markup, no texto plano). -->
+            <div class="o_sagui_bubble" t-out="renderMarkdown(m.text)"/>
+          </div>
+        </t>
+      </div>
+
+      <div class="o_sagui_inputrow">
+        <textarea class="o_sagui_input" t-ref="input" t-att-disabled="state.busy"
+                  placeholder="Sagui, necesito que…"
+                  t-model="state.input" t-on-keydown="onKeydown"/>
+        <button class="o_sagui_send" t-att-disabled="!canSend" t-on-click="send" title="Enviar">↵</button>
+      </div>
+    </div>
+  </t>
+</templates>

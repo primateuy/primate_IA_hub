@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiRecipes">
+    <div class="o_sga o_sgr">
+
+      <!-- Header -->
+      <div class="o_sga_head">
+        <div class="o_sga_head_l">
+          <h2 class="o_sga_title">Recetas</h2>
+          <div class="o_sga_sub">Tareas guardadas y parametrizadas. Elegí una, completá los datos y ejecutá (o programala).</div>
+        </div>
+        <button type="button" class="o_sga_btn o-primary" t-on-click="openNew">+ Nueva receta</button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="o_sgr_filters">
+        <input type="text" class="o_sga_input o_sgr_search" placeholder="Buscar…" t-model="state.search"/>
+        <select class="o_sga_input o_sgr_catsel" t-model="state.filterCat">
+          <option value="">Todas las categorías</option>
+          <option t-foreach="state.categories" t-as="c" t-key="c" t-att-value="c"><t t-esc="c"/></option>
+        </select>
+        <label class="o_sga_check"><input type="checkbox" t-model="state.onlyFav"/> Favoritas</label>
+      </div>
+
+      <t t-if="state.error"><div class="o_sga_empty o-err"><t t-esc="state.error"/></div></t>
+      <t t-if="state.loading"><div class="o_sga_empty">Cargando…</div></t>
+      <t t-elif="!filtered.length">
+        <div class="o_sga_empty">
+          <div class="o_sga_empty_t">No hay recetas</div>
+          <div class="o_sga_empty_s">Creá una tarea reutilizable con parámetros para correrla cuando quieras.</div>
+          <button type="button" class="o_sga_btn o-primary" t-on-click="openNew">+ Crear la primera</button>
+        </div>
+      </t>
+
+      <!-- Biblioteca -->
+      <t t-else="">
+        <div class="o_sgr_grid">
+          <div t-foreach="filtered" t-as="r" t-key="r.id" class="o_sgr_card">
+            <div class="o_sgr_card_h">
+              <span class="o_sgr_name"><t t-esc="r.name"/></span>
+              <button type="button" class="o_sgr_star" t-att-class="{ 'o-on': r.favorite }" t-on-click="() => this.toggleFav(r)" title="Favorita">★</button>
+            </div>
+            <div class="o_sgr_badges">
+              <t t-if="modeOf(r.mode)"><span class="o_sga_mode" t-att-class="modeOf(r.mode).cls"><t t-esc="modeOf(r.mode).label"/></span></t>
+              <span t-if="r.category" class="o_sgr_cat"><t t-esc="r.category"/></span>
+              <span t-if="!r.mine" class="o_sgr_shared">compartida · <t t-esc="r.owner"/></span>
+              <span t-if="r.output_type === 'file'" class="o_sgr_file">archivo</span>
+            </div>
+            <div class="o_sgr_desc" t-if="r.description"><t t-esc="r.description"/></div>
+            <div class="o_sgr_tags" t-if="tagList(r).length">
+              <span t-foreach="tagList(r)" t-as="t" t-key="t_index" class="o_sgr_tag"><t t-esc="t"/></span>
+            </div>
+            <div class="o_sgr_card_act">
+              <button type="button" class="o_sga_btn o-primary o-sm" t-on-click="() => this.openRun(r)">Ejecutar</button>
+              <button type="button" class="o_sga_btn o-sm" t-on-click="() => this.openSchedule(r)" title="Crear una automatización a partir de esta receta">Programar</button>
+              <t t-if="r.mine">
+                <button type="button" class="o_sga_iconbtn" title="Editar" t-on-click="() => this.openEdit(r)">✎</button>
+                <button type="button" class="o_sga_iconbtn o-danger" title="Borrar" t-on-click="() => this.remove(r)">🗑</button>
+              </t>
+            </div>
+          </div>
+        </div>
+      </t>
+
+      <!-- ===== Editor ===== -->
+      <t t-if="state.editing">
+        <div class="o_sga_back" t-on-click="cancelEdit"/>
+        <div class="o_sga_modal o_sgr_modal" role="dialog" aria-label="Editar receta">
+          <div class="o_sga_modal_h"><span><t t-esc="state.editing === 'new' ? 'Nueva receta' : 'Editar receta'"/></span></div>
+
+          <div class="o_sga_row">
+            <label class="o_sga_field"><span>Nombre</span><input type="text" class="o_sga_input" t-model="state.form.name"/></label>
+            <label class="o_sga_field"><span>Categoría</span><input type="text" class="o_sga_input" t-model="state.form.category" placeholder="Ventas, CRM…"/></label>
+          </div>
+          <label class="o_sga_field"><span>Descripción</span><input type="text" class="o_sga_input" t-model="state.form.description"/></label>
+          <div class="o_sga_row">
+            <label class="o_sga_field"><span>Tags (coma)</span><input type="text" class="o_sga_input" t-model="state.form.tags"/></label>
+            <label class="o_sga_check o_sgr_shared_chk"><input type="checkbox" t-model="state.form.shared"/> Compartir con el equipo</label>
+          </div>
+
+          <label class="o_sga_field"><span>Instrucción (usá {param} para los parámetros)</span>
+            <textarea class="o_sga_input o_sga_textarea" t-model="state.form.instruction"
+                      placeholder="Ej: dame de alta al cliente {nombre} con email {email} y creá una actividad de bienvenida."/></label>
+
+          <!-- Parámetros -->
+          <div class="o_sgr_params">
+            <div class="o_sgr_params_h"><span>Parámetros</span>
+              <button type="button" class="o_sga_btn o-ghost o-sm" t-on-click="addParam">+ Parámetro</button></div>
+            <div t-if="!state.form.params.length" class="o_sgr_params_empty">Sin parámetros. Agregá uno para que la receta pida datos al correr.</div>
+            <div t-foreach="state.form.params" t-as="p" t-key="p_index" class="o_sgr_param">
+              <input type="text" class="o_sga_input o-k" t-model="p.name" placeholder="clave"/>
+              <input type="text" class="o_sga_input o-l" t-model="p.label" placeholder="etiqueta"/>
+              <select class="o_sga_input o-t" t-model="p.ptype">
+                <option value="text">Texto</option><option value="number">Número</option>
+                <option value="date">Fecha</option><option value="selection">Selección</option>
+                <option value="many2one">Registro</option>
+              </select>
+              <input t-if="p.ptype === 'selection'" type="text" class="o_sga_input o-x" t-model="p.selection_options" placeholder="opciones,coma"/>
+              <input t-if="p.ptype === 'many2one'" type="text" class="o_sga_input o-x" t-model="p.relation" placeholder="res.partner"/>
+              <input t-if="p.ptype !== 'selection' and p.ptype !== 'many2one'" type="text" class="o_sga_input o-x" t-model="p.default" placeholder="default"/>
+              <label class="o_sga_check o-r"><input type="checkbox" t-model="p.required"/> req</label>
+              <button type="button" class="o_sga_iconbtn o-danger" t-on-click="() => this.removeParam(p_index)">×</button>
+            </div>
+          </div>
+
+          <!-- Modo + scope (igual que automatizaciones) -->
+          <label class="o_sga_field"><span>Modo</span>
+            <select class="o_sga_input" t-model="state.form.mode">
+              <option value="readonly">Solo lectura (solo responde)</option>
+              <option value="propose">Proponer — confirmás cada cambio</option>
+              <option value="auto">Automático — aplica dentro del scope; el resto se confirma</option>
+            </select></label>
+          <div class="o_sga_scope" t-if="state.form.mode === 'auto'">
+            <div class="o_sga_scope_h">Scope automático <span>(lo que no entre se confirma a mano)</span></div>
+            <label class="o_sga_field"><span>Modelos (coma)</span><input type="text" class="o_sga_input" t-model="state.form.allowed_models" placeholder="mail.activity, project.task"/></label>
+            <div class="o_sga_row">
+              <div class="o_sga_field"><span>Operaciones</span>
+                <div class="o_sga_ops">
+                  <label class="o_sga_check"><input type="checkbox" t-model="state.form.op_create"/> Crear</label>
+                  <label class="o_sga_check"><input type="checkbox" t-model="state.form.op_write"/> Modificar</label>
+                </div></div>
+              <label class="o_sga_field"><span>Máx. records</span><input type="number" min="1" class="o_sga_input" t-model="state.form.max_records_per_run"/></label>
+            </div>
+            <label class="o_sga_field"><span>Campos (coma)</span><input type="text" class="o_sga_input" t-model="state.form.field_whitelist"/></label>
+            <label class="o_sga_field"><span>Dominio (opcional)</span><input type="text" class="o_sga_input" t-model="state.form.record_domain"/></label>
+          </div>
+          <label class="o_sga_check o_sga_unlink" t-if="state.form.mode !== 'readonly'">
+            <input type="checkbox" t-model="state.form.allow_unlink"/> Permitir proponer borrados (siempre se confirman)</label>
+
+          <label class="o_sga_field"><span>Salida</span>
+            <select class="o_sga_input" t-model="state.form.output_type">
+              <option value="chat">Respuesta en el chat</option>
+              <option value="file">Archivo descargable (CSV→Excel)</option>
+            </select></label>
+
+          <div class="o_sga_modal_foot">
+            <button type="button" class="o_sga_btn o-ghost" t-on-click="cancelEdit">Cancelar</button>
+            <button type="button" class="o_sga_btn o-primary" t-att-disabled="!formValid or state.saving" t-on-click="save">
+              <t t-esc="state.saving ? 'Guardando…' : 'Guardar'"/></button>
+          </div>
+        </div>
+      </t>
+
+      <!-- ===== Runner ===== -->
+      <t t-if="state.running">
+        <div class="o_sga_back" t-on-click="closeRun"/>
+        <div class="o_sga_modal o_sgr_modal" role="dialog" aria-label="Ejecutar receta">
+          <div class="o_sga_modal_h"><span>Ejecutar · <t t-esc="state.running.name"/></span>
+            <button type="button" class="o_sga_iconbtn" t-on-click="closeRun" aria-label="Cerrar">×</button></div>
+          <div class="o_sgr_run_desc" t-if="state.running.description"><t t-esc="state.running.description"/></div>
+
+          <!-- form de params -->
+          <t t-foreach="state.running.params" t-as="p" t-key="p.id">
+            <label class="o_sga_field">
+              <span><t t-esc="p.label or p.name"/><t t-if="p.required" class="o_sgr_req"> *</t></span>
+              <t t-if="p.ptype === 'selection'">
+                <select class="o_sga_input" t-model="state.runForm[p.name]">
+                  <option value="">—</option>
+                  <option t-foreach="selOptions(p)" t-as="o" t-key="o" t-att-value="o"><t t-esc="o"/></option>
+                </select>
+              </t>
+              <t t-elif="p.ptype === 'number'"><input type="number" class="o_sga_input" t-model="state.runForm[p.name]"/></t>
+              <t t-elif="p.ptype === 'date'"><input type="date" class="o_sga_input" t-model="state.runForm[p.name]"/></t>
+              <t t-elif="p.ptype === 'many2one'"><input type="number" class="o_sga_input" t-model="state.runForm[p.name]" t-att-placeholder="'ID en ' + (p.relation or 'el modelo')"/></t>
+              <t t-else=""><input type="text" class="o_sga_input" t-model="state.runForm[p.name]"/></t>
+            </label>
+          </t>
+          <div t-if="!state.running.params.length" class="o_sgr_noparams">Esta receta no necesita parámetros.</div>
+
+          <div class="o_sga_modal_foot o_sgr_run_foot">
+            <button type="button" class="o_sga_btn o-ghost" t-att-disabled="state.runLoading" t-on-click="simulate">
+              <t t-esc="state.runLoading and state.runMode === 'sim' ? 'Simulando…' : 'Simular'"/></button>
+            <button type="button" class="o_sga_btn" t-on-click="() => this.openSchedule(state.running)">Programar</button>
+            <button type="button" class="o_sga_btn o-primary" t-att-disabled="!runValid or state.runLoading" t-on-click="execute">
+              <t t-esc="state.runLoading and state.runMode === 'run' ? 'Ejecutando…' : 'Ejecutar'"/></button>
+          </div>
+
+          <!-- resultado -->
+          <t t-if="state.runResult">
+            <div class="o_sgr_result">
+              <t t-if="state.runResult.mode === 'sim'">
+                <div class="o_sgr_res_h">Simulación — no se aplicó nada</div>
+                <t t-if="state.runResult.simulated.length">
+                  <ul class="o_sga_simlist">
+                    <li t-foreach="state.runResult.simulated" t-as="s" t-key="s_index">
+                      <span class="o_sga_op" t-att-class="'o-' + s.op"><t t-esc="s.op"/></span>
+                      <span class="o_sga_prop_model"><t t-esc="s.model"/></span>
+                      <span class="o_sga_sim_sum"><t t-esc="s.summary"/></span>
+                    </li>
+                  </ul>
+                </t>
+                <div class="o_sgr_out" t-if="state.runResult.output"><t t-esc="state.runResult.output"/></div>
+              </t>
+              <t t-else="">
+                <t t-if="state.runResult.status === 'error'"><div class="o_sga_res o-err"><t t-esc="state.runResult.output"/></div></t>
+                <t t-elif="state.runResult.status === 'nothing'"><div class="o_sga_res o-muted">Sin novedad.</div></t>
+                <t t-else="">
+                  <div class="o_sgr_out"><t t-esc="state.runResult.output"/></div>
+                  <a t-if="state.runResult.file" class="o_sga_btn o-primary o-sm o_sgr_dl" t-att-href="state.runResult.file.url" target="_blank">⬇ <t t-esc="state.runResult.file.filename"/></a>
+                </t>
+                <!-- confirmaciones interactivas (pending.write) -->
+                <t t-if="state.runResult.pendings and state.runResult.pendings.length">
+                  <div class="o_sgr_pend_h">Cambios que requieren tu confirmación:</div>
+                  <div t-foreach="state.runResult.pendings" t-as="p" t-key="p.token" class="o_sgr_pend">
+                    <span class="o_sga_op" t-att-class="'o-' + p.op"><t t-esc="p.op"/></span>
+                    <span class="o_sgr_pend_sum"><t t-esc="p.summary"/></span>
+                    <t t-if="p.state === 'pending'">
+                      <button type="button" class="o_sga_btn o-primary o-sm" t-on-click="() => this.confirmPending(p)">Confirmar</button>
+                      <button type="button" class="o_sga_btn o-ghost o-sm" t-on-click="() => this.cancelPending(p)">Cancelar</button>
+                    </t>
+                    <span t-elif="p.state === 'done'" class="o_sga_pill o-ok">aplicado</span>
+                    <span t-elif="p.state === 'cancelled'" class="o_sga_pill o-warn">cancelado</span>
+                    <span t-else="" class="o_sga_pill o-err" t-att-title="p.info"><t t-esc="p.state"/></span>
+                  </div>
+                </t>
+              </t>
+            </div>
+          </t>
+        </div>
+      </t>
+
+      <!-- ===== Programar (puente) ===== -->
+      <t t-if="state.scheduling">
+        <div class="o_sga_back" t-on-click="closeSchedule"/>
+        <div class="o_sga_modal" role="dialog" aria-label="Programar receta">
+          <div class="o_sga_modal_h"><span>Programar · <t t-esc="state.scheduling.name"/></span>
+            <button type="button" class="o_sga_iconbtn" t-on-click="closeSchedule" aria-label="Cerrar">×</button></div>
+          <div class="o_sgr_sched_note">Crea una automatización a partir de esta receta (corre desatendida; lo fuera de scope irá a la bandeja).</div>
+          <div class="o_sga_row">
+            <label class="o_sga_field"><span>Frecuencia</span>
+              <select class="o_sga_input" t-model="state.schedForm.schedule_type">
+                <option value="hourly">Cada hora</option><option value="daily">Diaria</option><option value="weekly">Semanal</option>
+              </select></label>
+            <label class="o_sga_field" t-if="state.schedForm.schedule_type !== 'hourly'"><span>Hora</span>
+              <input type="time" class="o_sga_input" t-model="state.schedForm.time"/></label>
+            <label class="o_sga_field" t-if="state.schedForm.schedule_type === 'weekly'"><span>Día</span>
+              <select class="o_sga_input" t-model="state.schedForm.weekday">
+                <option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miércoles</option>
+                <option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sábado</option><option value="6">Domingo</option>
+              </select></label>
+          </div>
+          <div class="o_sga_modal_foot">
+            <button type="button" class="o_sga_btn o-ghost" t-on-click="closeSchedule">Cancelar</button>
+            <button type="button" class="o_sga_btn o-primary" t-on-click="doSchedule">Programar</button>
+          </div>
+        </div>
+      </t>
+    </div>
+  </t>
+</templates>

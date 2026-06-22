@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiApp">
+    <div class="o_sagui_shell">
+
+      <!-- ============ SIDEBAR (oscuro, marca) ============ -->
+      <aside class="o_sagui_sidebar">
+        <div class="o_sagui_brand">
+          <span class="o_sagui_dot"/>
+          <!-- Cuando estén los assets exportados: reemplazar por
+               <img class="o_sagui_brandimg" src="/primate_sagui_web/static/img/sagui_logo.svg" alt="Sagui AI"/> -->
+          <span class="o_sagui_wordmark">Sagui<span class="o-accent"> AI</span></span>
+        </div>
+        <nav class="o_sagui_nav">
+          <t t-foreach="sections" t-as="s" t-key="s.key">
+            <button class="o_sagui_navitem" type="button"
+                    t-att-class="{ 'o-active': state.section === s.key }"
+                    t-att-aria-current="state.section === s.key ? 'page' : undefined"
+                    t-on-click="() => this.setSection(s.key)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <t t-foreach="icons[s.key]" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+              </svg>
+              <span><t t-esc="s.label"/></span>
+            </button>
+          </t>
+        </nav>
+        <div class="o_sagui_sidefoot">Sagui · by PrimateUy</div>
+      </aside>
+
+      <!-- ============ ÁREA PRINCIPAL (clara) ============ -->
+      <section class="o_sagui_main">
+        <header class="o_sagui_topbar">
+          <span class="o_sagui_topttl"><t t-esc="currentLabel"/></span>
+        </header>
+
+        <!-- INICIO -->
+        <div class="o_sagui_content" t-if="state.section === 'inicio'">
+          <div class="o_sagui_home">
+            <div class="o_sagui_hello">Hola<t t-if="userName">, <t t-esc="userName"/></t> 👋</div>
+            <div class="o_sagui_hellosub">Tu asistente inteligente para Odoo. ¿En qué te ayudo hoy?</div>
+            <div class="o_sagui_cards">
+              <button class="o_sagui_card" type="button" t-on-click="() => this.setSection('conversaciones')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <t t-foreach="icons.conversaciones" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+                </svg>
+                <span class="t">Conversaciones</span>
+                <span class="d">Chateá con Sagui sobre tus datos de Odoo.</span>
+              </button>
+              <button class="o_sagui_card" type="button" t-on-click="() => this.setSection('historial')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <t t-foreach="icons.historial" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+                </svg>
+                <span class="t">Historial</span>
+                <span class="d">Uso de tokens y costo de cada consulta.</span>
+              </button>
+              <button class="o_sagui_card" type="button" t-on-click="() => this.setSection('ajustes')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <t t-foreach="icons.ajustes" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+                </svg>
+                <span class="t">Ajustes</span>
+                <span class="d">Configurá el modelo, la API y la whitelist.</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONVERSACIONES -> gestión de conversaciones (lista + chat persistido) -->
+        <div class="o_sagui_content o_sagui_content--chat" t-if="state.section === 'conversaciones'">
+          <SaguiConversations/>
+        </div>
+
+        <!-- AUTOMATIZACIONES -> digests/alertas read-only -->
+        <div class="o_sagui_content" t-if="state.section === 'automatizaciones'">
+          <SaguiAutomations t-if="state.section === 'automatizaciones'"/>
+        </div>
+
+        <!-- RECETAS -> tareas guardadas, parametrizadas y reutilizables -->
+        <div class="o_sagui_content" t-if="state.section === 'recetas'">
+          <SaguiRecipes t-if="state.section === 'recetas'"/>
+        </div>
+
+        <!-- CONECTORES -> sistemas externos vía MCP: cada usuario pega SU credencial y la prueba -->
+        <div class="o_sagui_content" t-if="state.section === 'conectores'">
+          <!-- Estado de la conexión con Claude (la config vive en Ajustes) -->
+          <div class="o_sagui_panelbox">
+            <div class="h">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <t t-foreach="icons.conectores" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+              </svg>
+              Conexión con Claude (Anthropic)
+            </div>
+            <t t-if="!state.settingsLoaded"><div class="p">Cargando…</div></t>
+            <t t-else="">
+              <div class="o_sagui_kv"><b>API key:</b>
+                <t t-esc="state.settings.api_key_set ? 'configurada ✓' : 'sin configurar'"/>
+                · <b>Modelo:</b> <t t-esc="state.settings.model || '—'"/></div>
+              <div class="o_sagui_formrow" style="margin-top:10px">
+                <button class="o_sagui_btn" type="button" t-on-click="() => this.setSection('ajustes')">Editar en Ajustes</button>
+              </div>
+            </t>
+          </div>
+
+          <!-- Sistemas externos conectados (MCP). El admin define la base; vos pegás tu credencial. -->
+          <div class="o_sagui_panelbox" style="margin-top:16px">
+            <div class="h">Sistemas externos</div>
+            <div class="p">Conectá tus cuentas (Odoo, GitHub, etc.). Tu credencial (PAT) se guarda
+              cifrada y solo se usa para conectarte — Sagui nunca la ve. Por default son de
+              <b>solo lectura</b>.</div>
+            <div class="o_sagui_formrow" t-if="state.connIsManager" style="margin-bottom:12px">
+              <button class="o_sagui_btn o_sagui_btn_ghost" type="button" t-on-click="addGithub">+ Agregar GitHub</button>
+            </div>
+            <t t-if="!state.connectorsLoaded"><div class="p">Cargando…</div></t>
+            <t t-elif="!state.connectors.length">
+              <div class="o_sagui_empty2">No hay conectores configurados todavía.
+                <t t-if="state.connIsManager">Agregá GitHub arriba, o creá uno en Ajustes → Conectores Sagui.</t>
+                <t t-else="">Pedile a un administrador que agregue uno.</t>
+              </div>
+            </t>
+            <t t-else="">
+              <div t-foreach="state.connectors" t-as="conn" t-key="conn.id" class="o_sagui_conncard">
+                <div class="o_sagui_conncard_head">
+                  <div class="o_sagui_conncard_title">
+                    <t t-esc="conn.name"/>
+                    <span class="o_sagui_chip" t-esc="conn.connector_type"/>
+                  </div>
+                  <span t-if="conn.allow_writes" class="o_sagui_pill" style="background:rgba(255,138,0,.14);color:#9a4d00">escrituras ON</span>
+                  <span t-else="" class="o_sagui_pill">solo lectura</span>
+                  <span t-if="conn.api_key_set" class="o_sagui_pill o_sagui_pill_ok">Conectado</span>
+                  <span t-else="" class="o_sagui_pill">Sin conectar</span>
+                </div>
+                <div class="o_sagui_formrow" t-if="conn.needs_username">
+                  <label>Usuario</label>
+                  <input type="text" class="o_sagui_input" t-model="draft(conn.id).username"
+                         placeholder="tu usuario en el sistema externo"/>
+                </div>
+                <div class="o_sagui_formrow">
+                  <label>API key</label>
+                  <input type="password" class="o_sagui_input" t-model="draft(conn.id).api_key"
+                         t-att-placeholder="conn.api_key_set ? '•••••••• (escribí para reemplazar)' : 'pegá tu API key'"/>
+                </div>
+                <div class="o_sagui_formrow" style="gap:8px">
+                  <button class="o_sagui_btn" type="button" t-att-disabled="draft(conn.id).busy"
+                          t-on-click="() => this.saveConnector(conn)">
+                    <t t-esc="draft(conn.id).busy ? 'Probando…' : (conn.api_key_set ? 'Actualizar y probar' : 'Conectar y probar')"/>
+                  </button>
+                  <button t-if="conn.api_key_set" class="o_sagui_btn o_sagui_btn_ghost" type="button"
+                          t-att-disabled="draft(conn.id).busy" t-on-click="() => this.deleteConnector(conn)">
+                    Quitar
+                  </button>
+                </div>
+                <div t-if="draft(conn.id).msg" class="o_sagui_connmsg"
+                     t-att-class="draft(conn.id).error ? 'o_sagui_connmsg o_sagui_connmsg_err' : 'o_sagui_connmsg o_sagui_connmsg_ok'"
+                     t-esc="draft(conn.id).msg"/>
+                <div t-if="conn.tools and conn.tools.length" class="o_sagui_conntools">
+                  <b>Lectura:</b> <t t-esc="conn.tools.join(', ')"/>
+                </div>
+                <div t-if="conn.write_tools and conn.write_tools.length" class="o_sagui_conntools">
+                  <b>Escritura (con confirmación):</b> <t t-esc="conn.write_tools.join(', ')"/>
+                </div>
+                <!-- Toggle de escrituras (solo manager). Advertencia incluida. -->
+                <div t-if="state.connIsManager" class="o_sagui_formrow" style="margin-top:8px">
+                  <button class="o_sagui_btn o_sagui_btn_ghost" type="button" t-on-click="() => this.toggleWrites(conn)">
+                    <t t-esc="conn.allow_writes ? 'Volver a solo lectura' : 'Habilitar escrituras externas'"/>
+                  </button>
+                  <span class="o_sagui_connmsg" t-if="!conn.allow_writes" style="font-size:11.5px">
+                    Las escrituras (crear issue, comentar, PR) siempre piden confirmación; nunca en automatizaciones.
+                  </span>
+                </div>
+              </div>
+            </t>
+          </div>
+        </div>
+
+        <!-- HISTORIAL -> dashboard gráfico interactivo (Chart.js) -->
+        <div class="o_sagui_content" t-if="state.section === 'historial'">
+          <SaguiHistory t-if="state.section === 'historial'"/>
+        </div>
+
+        <!-- AJUSTES -> config de Sagui EMBEBIDA (lee/escribe vía el conector) -->
+        <div class="o_sagui_content" t-if="state.section === 'ajustes'">
+          <div class="o_sagui_panelbox">
+            <div class="h">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <t t-foreach="icons.ajustes" t-as="d" t-key="d_index"><path t-att-d="d"/></t>
+              </svg>
+              Ajustes de Sagui
+            </div>
+
+            <t t-if="!state.settingsLoaded"><div class="p">Cargando…</div></t>
+            <t t-elif="!state.settings.can_edit">
+              <div class="p">Necesitás permisos de administración para cambiar la configuración.
+                Modelo actual: <b><t t-esc="state.settings.model || '—'"/></b> · API key:
+                <b><t t-esc="state.settings.api_key_set ? 'configurada' : 'sin configurar'"/></b>.</div>
+            </t>
+            <t t-else="">
+              <div class="o_sagui_form">
+                <label class="o_sagui_field">
+                  <span>Modelo (análisis)</span>
+                  <input type="text" t-model="state.settings.model" placeholder="claude-sonnet-4-6"/>
+                </label>
+                <label class="o_sagui_field">
+                  <span>Modelo rápido (consultas simples)</span>
+                  <input type="text" t-model="state.settings.model_fast" placeholder="claude-haiku-4-5-20251001"/>
+                </label>
+                <label class="o_sagui_field">
+                  <span>Modelos con escritura habilitada (whitelist)</span>
+                  <textarea rows="2" t-model="state.settings.write_whitelist"
+                            placeholder="res.partner, product.product, account.move, …"/>
+                  <small>Lista separada por comas. Vacío = Sagui no propone escrituras.</small>
+                </label>
+                <label class="o_sagui_field">
+                  <span>API key de Claude ·
+                    <b t-att-class="state.settings.api_key_set ? 'o-ok' : 'o-warn'">
+                      <t t-esc="state.settings.api_key_set ? 'configurada ✓' : 'sin configurar'"/>
+                    </b>
+                  </span>
+                  <input type="password" autocomplete="off" t-model="state.newApiKey"
+                         placeholder="Pegá una nueva para cambiarla (vacío = no se toca)"/>
+                  <small>Por seguridad no se muestra la actual; sólo se reemplaza si escribís una.</small>
+                </label>
+                <div class="o_sagui_formrow">
+                  <button class="o_sagui_btn" type="button" t-att-disabled="state.settingsSaving"
+                          t-on-click="() => this.saveSettings()">
+                    <t t-esc="state.settingsSaving ? 'Guardando…' : 'Guardar'"/>
+                  </button>
+                  <span class="o_sagui_msg2" t-if="state.settingsMsg"><t t-esc="state.settingsMsg"/></span>
+                </div>
+                <div class="o_sagui_advlink">
+                  <a href="#" t-on-click.prevent="() => this.openSettings()">Abrir Ajustes del sistema (avanzado)</a>
+                </div>
+              </div>
+            </t>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </t>
+</templates>

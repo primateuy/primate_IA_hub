@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="primate_sagui_web.SaguiAutomations">
+    <div class="o_sga">
+
+      <!-- Header -->
+      <div class="o_sga_head">
+        <div class="o_sga_head_l">
+          <h2 class="o_sga_title">Automatizaciones</h2>
+          <div class="o_sga_sub">Digests, alertas y acciones programadas. Las escrituras pasan por
+            scope o aprobación — Sagui nunca aplica a ciegas.</div>
+        </div>
+        <div class="o_sga_head_r">
+          <label class="o_sga_kill" t-if="state.isManager" t-att-title="state.killed ? 'Todas en pausa' : 'Pausar todas'">
+            <input type="checkbox" t-att-checked="state.killed" t-on-change="toggleKill"/>
+            <span>Kill switch</span>
+          </label>
+          <button type="button" class="o_sga_btn o-primary" t-on-click="openNew">+ Nueva</button>
+        </div>
+      </div>
+
+      <div t-if="state.killed" class="o_sga_killbar">⏸ Todas las automatizaciones están en pausa (kill switch global activo).</div>
+
+      <!-- Tabs -->
+      <div class="o_sga_tabs">
+        <button type="button" class="o_sga_tab" t-att-class="{ 'o-active': state.tab === 'list' }" t-on-click="() => this.setTab('list')">Automatizaciones</button>
+        <button type="button" class="o_sga_tab" t-att-class="{ 'o-active': state.tab === 'inbox' }" t-on-click="() => this.setTab('inbox')">
+          Bandeja <span t-if="inboxCount" class="o_sga_badge"><t t-esc="inboxCount"/></span>
+        </button>
+      </div>
+
+      <t t-if="state.error"><div class="o_sga_empty o-err"><t t-esc="state.error"/></div></t>
+
+      <!-- ============ TAB: LISTA ============ -->
+      <t t-if="state.tab === 'list'">
+        <t t-if="state.loading"><div class="o_sga_empty">Cargando…</div></t>
+        <t t-elif="!state.list.length">
+          <div class="o_sga_empty">
+            <div class="o_sga_empty_t">No tenés automatizaciones todavía</div>
+            <div class="o_sga_empty_s">Creá una para que Sagui te resuma, avise o actúe en piloto automático.</div>
+            <button type="button" class="o_sga_btn o-primary" t-on-click="openNew">+ Crear la primera</button>
+          </div>
+        </t>
+        <t t-else="">
+          <div class="o_sga_list">
+            <div t-foreach="state.list" t-as="a" t-key="a.id" class="o_sga_card" t-att-class="{ 'o-off': !a.active }">
+              <div class="o_sga_card_main">
+                <div class="o_sga_card_top">
+                  <span class="o_sga_dot" t-if="a.has_unread" title="Resultado sin leer"/>
+                  <span class="o_sga_name"><t t-esc="a.name"/></span>
+                  <t t-if="modeOf(a.mode)"><span class="o_sga_mode" t-att-class="modeOf(a.mode).cls"><t t-esc="modeOf(a.mode).label"/></span></t>
+                  <t t-if="a.pending_count"><span class="o_sga_pend" title="Propuestas en la bandeja"><t t-esc="a.pending_count"/> en bandeja</span></t>
+                  <t t-if="statusOf(a.last_status)"><span class="o_sga_pill" t-att-class="statusOf(a.last_status).cls"><t t-esc="statusOf(a.last_status).label"/></span></t>
+                </div>
+                <div class="o_sga_meta">
+                  <span><t t-esc="scheduleText(a)"/></span>
+                  <span class="o_sga_sep">·</span><span>último: <t t-esc="fmtDate(a.last_run)"/></span>
+                  <t t-if="a.active and a.next_run"><span class="o_sga_sep">·</span><span>próximo: <t t-esc="fmtDate(a.next_run)"/></span></t>
+                </div>
+                <div class="o_sga_instr" t-att-title="a.instruction"><t t-esc="a.instruction"/></div>
+              </div>
+              <div class="o_sga_card_actions">
+                <label class="o_sga_switch" t-att-title="a.active ? 'Activa' : 'Pausada'">
+                  <input type="checkbox" t-att-checked="a.active" t-on-change="() => this.toggle(a)"/>
+                  <span class="o_sga_slider"/>
+                </label>
+                <button type="button" class="o_sga_btn" t-att-disabled="state.simLoading" t-on-click="() => this.dryRun(a)" title="Simular sin aplicar">Simular</button>
+                <button type="button" class="o_sga_btn" t-att-disabled="state.running === a.id" t-on-click="() => this.runNow(a)">
+                  <t t-esc="state.running === a.id ? 'Probando…' : 'Probar ahora'"/>
+                </button>
+                <button type="button" class="o_sga_iconbtn" title="Editar" t-on-click="() => this.openEdit(a)">✎</button>
+                <button type="button" class="o_sga_iconbtn o-danger" title="Borrar" t-on-click="() => this.remove(a)">🗑</button>
+              </div>
+            </div>
+          </div>
+        </t>
+      </t>
+
+      <!-- ============ TAB: BANDEJA (inbox) ============ -->
+      <t t-if="state.tab === 'inbox'">
+        <t t-if="state.inboxLoading"><div class="o_sga_empty">Cargando…</div></t>
+        <t t-elif="!state.inbox.length">
+          <div class="o_sga_empty">
+            <div class="o_sga_empty_t">Bandeja vacía</div>
+            <div class="o_sga_empty_s">Cuando una automatización proponga un cambio, aparece acá para que lo apruebes.</div>
+          </div>
+        </t>
+        <t t-else="">
+          <div t-foreach="state.inbox" t-as="g" t-key="g.automation_id" class="o_sga_group">
+            <div class="o_sga_group_h">
+              <div>
+                <span class="o_sga_group_t"><t t-esc="g.automation"/></span>
+                <span class="o_sga_group_s">quiere <t t-esc="g.items.length"/> acción(es) · dueño: <t t-esc="g.owner"/></span>
+              </div>
+              <div class="o_sga_group_act">
+                <button type="button" class="o_sga_btn o-primary" t-on-click="() => this.approveGroup(g)">Aprobar todo</button>
+                <button type="button" class="o_sga_btn o-ghost" t-on-click="() => this.rejectGroup(g)">Rechazar todo</button>
+              </div>
+            </div>
+            <div t-foreach="g.items" t-as="it" t-key="it.id" class="o_sga_prop">
+              <div class="o_sga_prop_top">
+                <span class="o_sga_op" t-att-class="'o-' + it.operation"><t t-esc="it.operation_label"/></span>
+                <span class="o_sga_prop_model"><t t-esc="it.model"/></span>
+                <span class="o_sga_prop_n"><t t-esc="it.record_count"/> registro(s)</span>
+                <span class="o_sga_prop_reason" t-att-title="'Motivo: ' + it.reason"><t t-esc="it.reason"/></span>
+              </div>
+              <div class="o_sga_prop_sum"><t t-esc="it.summary"/></div>
+              <table class="o_sga_diff" t-if="diffLines(it).length">
+                <thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+                <tbody>
+                  <tr t-foreach="diffLines(it)" t-as="d" t-key="d_index">
+                    <td class="o-f"><t t-esc="d.field"/></td>
+                    <td class="o-b"><t t-esc="d.from"/></td>
+                    <td class="o-a"><t t-esc="d.to"/></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="o_sga_prop_act">
+                <button type="button" class="o_sga_btn o-primary o-sm" t-on-click="() => this.approve([it.id])">Aprobar</button>
+                <button type="button" class="o_sga_btn o-ghost o-sm" t-on-click="() => this.reject([it.id])">Rechazar</button>
+              </div>
+            </div>
+          </div>
+        </t>
+      </t>
+
+      <!-- ===== Editor (modal) ===== -->
+      <t t-if="state.editing">
+        <div class="o_sga_back" t-on-click="cancelEdit"/>
+        <div class="o_sga_modal" role="dialog" aria-label="Editar automatización">
+          <div class="o_sga_modal_h"><span><t t-esc="state.editing === 'new' ? 'Nueva automatización' : 'Editar automatización'"/></span></div>
+
+          <label class="o_sga_field"><span>Nombre</span>
+            <input type="text" class="o_sga_input" t-model="state.form.name" placeholder="Ej: Crear actividad de seguimiento"/></label>
+
+          <label class="o_sga_field"><span>Instrucción</span>
+            <textarea class="o_sga_input o_sga_textarea" t-model="state.form.instruction"
+                      placeholder="Ej: por cada oportunidad sin actividad creá una actividad de llamado para mañana."/></label>
+
+          <div class="o_sga_row">
+            <label class="o_sga_field"><span>Frecuencia</span>
+              <select class="o_sga_input" t-model="state.form.schedule_type">
+                <option value="hourly">Cada hora</option><option value="daily">Diaria</option><option value="weekly">Semanal</option>
+              </select></label>
+            <label class="o_sga_field" t-if="state.form.schedule_type !== 'hourly'"><span>Hora</span>
+              <input type="time" class="o_sga_input" t-model="state.form.time"/></label>
+            <label class="o_sga_field" t-if="state.form.schedule_type === 'weekly'"><span>Día</span>
+              <select class="o_sga_input" t-model="state.form.weekday">
+                <option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miércoles</option>
+                <option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sábado</option><option value="6">Domingo</option>
+              </select></label>
+          </div>
+
+          <!-- Modo de seguridad -->
+          <label class="o_sga_field"><span>Modo</span>
+            <select class="o_sga_input" t-model="state.form.mode">
+              <option value="readonly">Solo lectura (solo avisa)</option>
+              <option value="propose">Proponer — todo va a la bandeja a aprobar</option>
+              <option value="auto">Automático — aplica solo dentro del scope; el resto a la bandeja</option>
+            </select>
+          </label>
+
+          <!-- Scope (solo modo auto) -->
+          <div class="o_sga_scope" t-if="state.form.mode === 'auto'">
+            <div class="o_sga_scope_h">Scope automático <span>(conservador: lo que no entre acá va a la bandeja)</span></div>
+            <label class="o_sga_field"><span>Modelos permitidos (coma)</span>
+              <input type="text" class="o_sga_input" t-model="state.form.allowed_models" placeholder="mail.activity, crm.lead"/></label>
+            <div class="o_sga_row">
+              <div class="o_sga_field"><span>Operaciones</span>
+                <div class="o_sga_ops">
+                  <label class="o_sga_check"><input type="checkbox" t-model="state.form.op_create"/> Crear</label>
+                  <label class="o_sga_check"><input type="checkbox" t-model="state.form.op_write"/> Modificar</label>
+                </div>
+              </div>
+              <label class="o_sga_field"><span>Máx. records por run</span>
+                <input type="number" min="1" class="o_sga_input" t-model="state.form.max_records_per_run"/></label>
+            </div>
+            <label class="o_sga_field"><span>Campos permitidos (coma)</span>
+              <input type="text" class="o_sga_input" t-model="state.form.field_whitelist" placeholder="summary, date_deadline"/></label>
+            <label class="o_sga_field"><span>Dominio de records (opcional)</span>
+              <input type="text" class="o_sga_input" t-model="state.form.record_domain" placeholder="[['user_id','=',uid]]"/></label>
+          </div>
+
+          <label class="o_sga_check o_sga_unlink" t-if="state.form.mode !== 'readonly'">
+            <input type="checkbox" t-model="state.form.allow_unlink"/>
+            Permitir proponer <b>borrados</b> (siempre van a la bandeja, nunca automáticos)
+          </label>
+
+          <div class="o_sga_deliv">
+            <span class="o_sga_deliv_t">Avisarme por:</span>
+            <label class="o_sga_check"><input type="checkbox" t-model="state.form.delivery_discuss"/> Discuss</label>
+            <label class="o_sga_check"><input type="checkbox" t-model="state.form.delivery_inapp"/> In-app</label>
+          </div>
+
+          <div class="o_sga_modal_foot">
+            <button type="button" class="o_sga_btn o-ghost" t-on-click="cancelEdit">Cancelar</button>
+            <button type="button" class="o_sga_btn o-primary" t-att-disabled="!formValid or state.saving" t-on-click="save">
+              <t t-esc="state.saving ? 'Guardando…' : 'Guardar'"/>
+            </button>
+          </div>
+        </div>
+      </t>
+
+      <!-- ===== Resultado de "Probar ahora" ===== -->
+      <t t-if="state.result">
+        <div class="o_sga_back" t-on-click="dismissResult"/>
+        <div class="o_sga_modal" role="dialog" aria-label="Resultado">
+          <div class="o_sga_modal_h"><span>Resultado · <t t-esc="state.result.name"/></span>
+            <button type="button" class="o_sga_iconbtn" t-on-click="dismissResult" aria-label="Cerrar">×</button></div>
+          <div class="o_sga_resbar" t-if="state.result.applied.length or state.result.proposed.length">
+            <span t-if="state.result.applied.length" class="o_sga_pill o-ok"><t t-esc="state.result.applied.length"/> aplicada(s)</span>
+            <span t-if="state.result.proposed.length" class="o_sga_pill o-warn"><t t-esc="state.result.proposed.length"/> a la bandeja</span>
+          </div>
+          <t t-if="state.result.status === 'nothing'"><div class="o_sga_res o-muted">Sin novedad — nada para reportar.</div></t>
+          <t t-elif="state.result.status === 'error'"><div class="o_sga_res o-err"><t t-esc="state.result.output"/></div></t>
+          <t t-else=""><div class="o_sga_res"><t t-esc="state.result.output"/></div></t>
+        </div>
+      </t>
+
+      <!-- ===== Simulación (dry-run) ===== -->
+      <t t-if="state.sim">
+        <div class="o_sga_back" t-on-click="dismissSim"/>
+        <div class="o_sga_modal" role="dialog" aria-label="Simulación">
+          <div class="o_sga_modal_h"><span>Simulación · <t t-esc="state.sim.name"/></span>
+            <button type="button" class="o_sga_iconbtn" t-on-click="dismissSim" aria-label="Cerrar">×</button></div>
+          <div class="o_sga_simnote">Esto es lo que <b>haría</b> — no se aplicó nada.</div>
+          <t t-if="state.sim.simulated.length">
+            <ul class="o_sga_simlist">
+              <li t-foreach="state.sim.simulated" t-as="s" t-key="s_index">
+                <span class="o_sga_op" t-att-class="'o-' + s.op"><t t-esc="s.op"/></span>
+                <span class="o_sga_prop_model"><t t-esc="s.model"/></span>
+                <span class="o_sga_prop_n"><t t-esc="s.count"/> reg.</span>
+                <span class="o_sga_sim_sum"><t t-esc="s.summary"/></span>
+              </li>
+            </ul>
+          </t>
+          <t t-else=""><div class="o_sga_res o-muted">No haría ninguna escritura.</div></t>
+        </div>
+      </t>
+    </div>
+  </t>
+</templates>
