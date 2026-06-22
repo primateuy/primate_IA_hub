@@ -31,6 +31,10 @@ class SaguiRepoMapping(models.Model):
     modulo = fields.Char(string="Módulo")
     company_id = fields.Many2one("res.company", string="Compañía", ondelete="set null")
     partner_id = fields.Many2one("res.partner", string="Partner", ondelete="set null")
+    # Si está activo, el upload (fase 3) salta el gate humano y va directo a pushear/PR.
+    auto_upload = fields.Boolean(string="Subir sin aprobación", default=False,
+                                 help="Si está activo, el PR se abre solo tras tests-ok (sin gate). "
+                                      "Default OFF: cada PR requiere aprobación de un manager.")
 
     _sql_constraints = [
         ("client_key_uniq", "unique(client_key)", "La clave de cliente debe ser única."),
@@ -102,6 +106,7 @@ class SaguiActivityCapture(models.TransientModel):
                 "tests_cmd": mapping.tests_cmd or "",
                 # FASE 3: rama de trabajo donde el runner commiteará el fix (head del futuro PR).
                 "work_branch": "sagui/fix-%s" % act.id,
+                "auto_upload": mapping.auto_upload,
                 "activity_id": act.id,
                 "prompt": self._build_prompt(act, mapping, contexto),
             })
@@ -233,35 +238,45 @@ class SaguiActivityCapture(models.TransientModel):
         s = re.sub(r"[^a-z0-9]+", "-", (texto or "").lower()).strip("-")
         return (s or "actividad")[:50]
 
-    # ------------------------------------------------------------------ commit al vault (GitHub)
-    @api.model
-    def _commit_md_to_vault(self, path, content, message):
-        """Commitea el .md al repo del vault vía el conector GitHub existente (no reimplementa auth).
-        Best-effort: si el vault/conector no está configurado, loguea y sigue (el job igual se crea)."""
+    # ------------------------------------------------------------------ vault (GitHub)
+    def _vault_target(self, user_id):
+        """Resuelve el vault para un usuario: (owner, repo, branch, cred) o None si no está
+        configurado (param sagui.vault_github='owner/repo' + conector github + credencial del user)."""
         icp = self.env["ir.config_parameter"].sudo()
-        coords = (icp.get_param("sagui.vault_github") or "").strip()   # "owner/repo"
+        coords = (icp.get_param("sagui.vault_github") or "").strip()
         if "/" not in coords:
-            _logger.info("Vault GitHub no configurado (param sagui.vault_github); salto el commit.")
-            return False
+            return None
         owner, repo = coords.split("/", 1)
         branch = (icp.get_param("sagui.vault_github_branch") or "main").strip()
-
-        Conn = self.env["sagui.connector"]
         conn_id = icp.get_param("sagui.vault_connector_id")
         domain = [("id", "=", int(conn_id))] if conn_id else \
             [("connector_type", "=", "github"), ("enabled", "=", True)]
-        conn = Conn.search(domain, limit=1)
+        conn = self.env["sagui.connector"].sudo().search(domain, limit=1)
         if not conn:
-            _logger.warning("Sin conector GitHub para el vault; salto el commit del .md.")
-            return False
-        cred = self.env["sagui.connector.credential"].search(
-            [("connector_id", "=", conn.id), ("user_id", "=", self.env.uid)], limit=1)
+            return None
+        cred = self.env["sagui.connector.credential"].sudo().search(
+            [("connector_id", "=", conn.id), ("user_id", "=", user_id)], limit=1)
         if not cred or not cred.api_key_enc:
-            _logger.warning("Sin credencial GitHub del usuario para el vault; salto el commit.")
+            return None
+        return owner, repo, branch, cred
+
+    @staticmethod
+    def _md_path(activity):
+        return "%s/%s-%s.md" % (VAULT_DIR, activity.id,
+                                SaguiActivityCapture._slug(activity.summary or str(activity.id)))
+
+    @api.model
+    def _commit_md_to_vault(self, path, content, message):
+        """Commitea el .md al vault vía el conector GitHub (no reimplementa auth). Best-effort: si el
+        vault/conector no está configurado, loguea y sigue (el job igual se crea)."""
+        tgt = self._vault_target(self.env.uid)
+        if not tgt:
+            _logger.info("Vault GitHub no configurado/credencial; salto el commit del .md.")
             return False
+        owner, repo, branch, cred = tgt
         try:
-            # Llamada DIRECTA (infra de Sagui, no escritura iniciada por el LLM → sin gating).
-            # Requiere el conector con escrituras habilitadas (server no read-only).
+            # Llamada DIRECTA (infra de Sagui, no escritura del LLM → sin gating). Requiere el
+            # conector con escrituras habilitadas (server no read-only).
             self.env["primate.sagui.mcp"].call_tool(cred, "create_or_update_file", {
                 "owner": owner, "repo": repo, "branch": branch,
                 "path": path, "content": content, "message": message})
@@ -269,6 +284,69 @@ class SaguiActivityCapture(models.TransientModel):
         except Exception as e:  # noqa: BLE001
             _logger.warning("Falló el commit del .md al vault (%s): %s", path, e)
             return False
+
+    @api.model
+    def _update_md_status(self, activity, new_status):
+        """Best-effort: reescribe el frontmatter 'status' del .md del vault (registro Obsidian). Lee
+        el archivo (sha+content), reemplaza la línea status y lo recommitea como el dueño de la
+        actividad. Si el vault no está o algo falla, loguea y sigue."""
+        if not activity or not activity.user_id:
+            return False
+        tgt = self._vault_target(activity.user_id.id)
+        if not tgt:
+            _logger.info("Vault no configurado; salto el update del status del .md.")
+            return False
+        owner, repo, branch, cred = tgt
+        path = self._md_path(activity)
+        Mcp = self.env["primate.sagui.mcp"]
+        try:
+            raw = Mcp.call_tool(cred, "get_file_contents",
+                                {"owner": owner, "repo": repo, "path": path, "ref": branch})
+            info = self._parse_github_file(raw)
+            if not info or not info.get("content"):
+                _logger.info("No pude leer el .md del vault (%s); salto el update.", path)
+                return False
+            nuevo = self._replace_frontmatter_status(info["content"], new_status)
+            args = {"owner": owner, "repo": repo, "branch": branch, "path": path, "content": nuevo,
+                    "message": "Sagui: status -> %s (actividad %s)" % (new_status, activity.id)}
+            if info.get("sha"):
+                args["sha"] = info["sha"]
+            Mcp.call_tool(cred, "create_or_update_file", args)
+            _logger.info("Vault: status del .md de la actividad %s -> %s", activity.id, new_status)
+            return True
+        except Exception as e:  # noqa: BLE001
+            _logger.warning("Falló el update del status del .md (%s): %s", path, e)
+            return False
+
+    @staticmethod
+    def _parse_github_file(raw):
+        """Parsea la salida de get_file_contents (github MCP) → {content, sha} o None. Defensivo:
+        maneja JSON (dict/list), base64 y texto plano."""
+        import base64
+        if not raw:
+            return None
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError):
+            return {"content": raw, "sha": None} if isinstance(raw, str) else None
+        if isinstance(data, list):
+            data = next((d for d in data if isinstance(d, dict) and d.get("content")), None) or {}
+        if not isinstance(data, dict):
+            return None
+        content, sha = data.get("content"), data.get("sha")
+        if content and (data.get("encoding") == "base64" or ("\n" not in content and len(content) > 80)):
+            try:
+                content = base64.b64decode(content).decode("utf-8", "ignore")
+            except Exception:  # noqa: BLE001
+                pass
+        return {"content": content, "sha": sha} if content else None
+
+    @staticmethod
+    def _replace_frontmatter_status(content, new_status):
+        """Reemplaza la línea 'status: ...' del frontmatter; si no existe, la inserta tras el 1er '---'."""
+        if re.search(r"(?m)^status:\s*.*$", content or ""):
+            return re.sub(r"(?m)^status:\s*.*$", "status: %s" % new_status, content, count=1)
+        return re.sub(r"(?m)^---\s*$", "---\nstatus: %s" % new_status, content or "", count=1)
 
     # ------------------------------------------------------------------ audit
     @api.model

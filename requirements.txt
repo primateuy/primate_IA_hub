@@ -1,0 +1,32 @@
+# =============================================================================
+# Dependencias Python — Ecosistema Sagui para Odoo 19 (PrimateUY)
+# Módulos: primate_ai_connector, primate_sagui, primate_sagui_orchestration
+#
+# Instalación desde 0 (en el venv de Odoo):
+#   pip install -r requirements.txt
+#
+# Versiones probadas en el entorno actual (mínimos seguros con >=):
+#   requests 2.31.0 · cryptography 42.0.8 · openpyxl 3.1.2
+#   Pillow 10.2.0 · PyMuPDF 1.27.2.3 · mcp 1.28.0
+# =============================================================================
+
+# --- Ya suelen venir con Odoo (se listan para un install limpio sin Odoo) ---
+requests>=2.31          # HTTP a la API de Anthropic + notificaciones (telegram/webhook)
+cryptography>=42.0       # Fernet — cifrado de credenciales de conectores MCP
+openpyxl>=3.1            # xlsx — import de productos y salida de recetas a archivo
+Pillow>=10.0             # PIL — extracción de paleta de logos raster (greenfield)
+
+# --- NO vienen con Odoo: imprescindibles para que los módulos carguen ---
+PyMuPDF>=1.24            # 'fitz' — extracción de PDF (generador de sitios / greenfield)
+mcp>=1.0                 # SDK cliente MCP (framework de conectores: GitHub, etc.)
+
+# =============================================================================
+# NO son paquetes pip (instalar aparte si se usan esas features):
+#
+#   - El runner local (primate_sagui_orchestration/runner/) usa SOLO la stdlib,
+#     pero para la Fase 3 (push + PR) necesita los CLIs:
+#         git   y   gh (GitHub CLI)   autenticados.
+#
+#   - El conector MCP de GitHub corre el server oficial vía Docker:
+#         docker  +  imagen ghcr.io/github/github-mcp-server
+# =============================================================================

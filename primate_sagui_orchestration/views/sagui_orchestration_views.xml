@@ -26,10 +26,12 @@
     <field name="arch" type="xml">
       <form>
         <header>
-          <!-- Gate humano (fase 3): aprobar/rechazar el upload antes de pushear. -->
+          <!-- Gate humano (fase 3): aprobar/rechazar el upload antes de pushear. Solo manager. -->
           <button name="action_approve_upload" type="object" string="Aprobar y subir" class="btn-primary"
+                  groups="primate_ai_connector.group_ai_manager,base.group_system"
                   invisible="job_type != 'upload' or state != 'awaiting_approval'"/>
           <button name="action_reject_upload" type="object" string="Rechazar"
+                  groups="primate_ai_connector.group_ai_manager,base.group_system"
                   invisible="job_type != 'upload' or state != 'awaiting_approval'"/>
           <field name="state" widget="statusbar"
                  statusbar_visible="pending,awaiting_approval,started,done"/>
@@ -47,6 +49,7 @@
               <field name="tests_cmd" invisible="job_type == 'upload'"/>
               <field name="activity_id"/>
               <field name="source_job_id" invisible="not source_job_id"/>
+              <field name="auto_upload" invisible="job_type != 'upload'"/>
             </group>
             <group string="Resultado (lo reporta el runner)">
               <field name="cost_usd" invisible="job_type == 'upload'"/>

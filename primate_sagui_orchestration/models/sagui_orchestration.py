@@ -8,8 +8,14 @@ import json
 import logging
 
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 _logger = logging.getLogger(__name__)
+
+# Param global: si está en '1', TODO upload pasa por aprobación (ignora mapping.auto_upload).
+FORCE_GATE_PARAM = "sagui.uploads_always_gate"
+# Param: usuario aprobador de los uploads (a quién avisar). Si vacío, primer manager.
+APPROVER_PARAM = "sagui.upload_approver_id"
 
 
 class SaguiOrchestrationJob(models.Model):
@@ -38,6 +44,8 @@ class SaguiOrchestrationJob(models.Model):
     pr_body = fields.Text(string="Cuerpo del PR", copy=False)
     source_job_id = fields.Many2one("sagui.orchestration.job", string="Job origen (fix)",
                                     ondelete="set null", copy=False)
+    # Si el mapping del cliente permite auto-subir, el upload salta el gate (va directo a pending).
+    auto_upload = fields.Boolean(string="Subir sin aprobación", default=False, copy=False)
     prompt = fields.Text(string="Prompt")
     allowed_tools = fields.Char(string="Tools permitidas (Claude Code)")
     max_turns = fields.Integer(string="Máx. turnos", default=10)
@@ -123,25 +131,31 @@ class SaguiOrchestrationJob(models.Model):
         if self.job_type == "fix":
             if tests_status in ("ok", "fail"):
                 self._update_activity_followup(tests_status)
-            # Fix verde + hay rama commiteada → encolar el upload (gate humano).
+                self._update_vault_md_status("tests-ok" if tests_status == "ok" else "tests-fail")
+            # Fix verde + hay rama commiteada → encolar el upload (gate humano o auto).
             if state == "done" and tests_status == "ok" and self.work_branch and self.commit_sha:
-                self._create_upload_job()
+                up = self._create_upload_job()
+                if up and up.state == "awaiting_approval":
+                    up._notify_approval_request()
             self._notify_user()
         elif self.job_type == "upload":
             if state == "done" and self.pr_url:
                 self._update_activity_followup_upload()
+                self._update_vault_md_status("PR abierto")
             self._notify_user()
         return True
 
     # ------------------------------------------------------------------ FASE 3: upload / PR
     def _create_upload_job(self):
-        """Tras un fix verde, encola un job 'upload' EN ESPERA DE APROBACIÓN (gate humano).
-        El runner solo lo levantará cuando un humano lo apruebe (state → pending)."""
+        """Tras un fix verde, encola un job 'upload'. Por default espera APROBACIÓN (gate humano);
+        si el mapping permite auto_upload (y no hay force-gate global), va directo a 'pending'."""
         self.ensure_one()
-        # No duplicar si ya existe un upload para este fix.
         existente = self.search([("source_job_id", "=", self.id), ("job_type", "=", "upload")], limit=1)
         if existente:
             return existente
+        icp = self.env["ir.config_parameter"].sudo()
+        force_gate = icp.get_param(FORCE_GATE_PARAM) in ("1", "True", "true")
+        auto = bool(self.auto_upload) and not force_gate
         act = self.activity_id
         ref = ("actividad #%s" % act.id) if act else ("job #%s" % self.id)
         titulo = "[Sagui] Fix %s%s" % (ref, (": " + act.summary) if (act and act.summary) else "")
@@ -150,7 +164,7 @@ class SaguiOrchestrationJob(models.Model):
         up = self.sudo().create({
             "name": "Upload: %s" % self.name,
             "job_type": "upload",
-            "state": "awaiting_approval",
+            "state": "pending" if auto else "awaiting_approval",
             "repo_path": self.repo_path,
             "branch": self.branch,            # base del PR
             "work_branch": self.work_branch,  # head del PR
@@ -165,18 +179,62 @@ class SaguiOrchestrationJob(models.Model):
         })
         return up
 
+    def _check_can_approve(self):
+        if not (self.env.user.has_group("primate_ai_connector.group_ai_manager")
+                or self.env.user.has_group("base.group_system")):
+            raise AccessError(_("Solo un manager puede aprobar y subir un PR."))
+
     def action_approve_upload(self):
-        """Gate humano: aprueba el upload → pasa a 'pending' para que el runner lo levante."""
+        """Gate humano (manager): aprueba el upload → 'pending' para que el runner lo levante."""
+        self._check_can_approve()
         for job in self:
             if job.job_type == "upload" and job.state == "awaiting_approval":
                 job.write({"state": "pending"})
         return True
 
     def action_reject_upload(self):
+        self._check_can_approve()
         for job in self:
             if job.job_type == "upload" and job.state == "awaiting_approval":
                 job.write({"state": "rejected"})
         return True
+
+    def _upload_approver(self):
+        """Usuario aprobador del upload: param sagui.upload_approver_id, o el primer manager."""
+        self.ensure_one()
+        icp = self.env["ir.config_parameter"].sudo()
+        uid = icp.get_param(APPROVER_PARAM)
+        if uid:
+            u = self.env["res.users"].browse(int(uid)).exists()
+            if u:
+                return u
+        grp = self.env.ref("primate_ai_connector.group_ai_manager", raise_if_not_found=False)
+        if grp and grp.user_ids:
+            return grp.user_ids[0]
+        return self.env.ref("base.user_admin", raise_if_not_found=False)
+
+    def _job_url(self):
+        base = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
+        return "%s/web#id=%s&model=sagui.orchestration.job&view_type=form" % (base, self.id)
+
+    def _notify_approval_request(self):
+        """Avisa al aprobador que hay un upload esperando, con link directo al job."""
+        self.ensure_one()
+        approver = self._upload_approver()
+        if not approver:
+            return
+        msg = ("📤 Sagui — hay un PR para aprobar: «%s».\nRevisalo y aprobá/rechazá acá: %s"
+               % (self.pr_title or self.name, self._job_url()))
+        self._dispatch_notify(msg, approver)
+
+    def _update_vault_md_status(self, new_status):
+        """Best-effort: actualiza el frontmatter 'status' del .md en el vault (registro Obsidian)."""
+        if not self.activity_id:
+            return
+        try:
+            self.env["sagui.activity.capture"].sudo()._update_md_status(self.activity_id, new_status)
+        except Exception:  # noqa: BLE001
+            _logger.warning("No pude actualizar el status del .md (job %s)", self.id, exc_info=True)
 
     def _update_activity_followup_upload(self):
         """Deja el PR abierto en el chatter del record de la actividad. Best-effort."""
@@ -234,16 +292,21 @@ class SaguiOrchestrationJob(models.Model):
           - telegram: Bot API (params sagui.telegram_bot_token + sagui.telegram_chat_id).
           - webhook:  POST del resultado en JSON a sagui.notify_webhook_url (enganchá WhatsApp/etc.)."""
         self.ensure_one()
+        self._dispatch_notify(self._notify_message(), self._notify_target_user())
+
+    def _dispatch_notify(self, msg, target_user):
+        """Manda `msg` por los canales configurados; discuss va al `target_user`. Best-effort."""
+        self.ensure_one()
         icp = self.env["ir.config_parameter"].sudo()
         canales = [c.strip() for c in (icp.get_param("sagui.notify_channels") or "discuss").split(",") if c.strip()]
-        msg = self._notify_message()
         if "discuss" in canales:
-            self._notify_discuss(msg)
+            self._notify_discuss(msg, target_user)
         if "telegram" in canales:
             self._notify_telegram(msg, icp)
         if "webhook" in canales:
             self._notify_webhook(icp)
-        _logger.info("Sagui notify job #%s por %s", self.id, canales)
+        _logger.info("Sagui notify job #%s por %s (a %s)", self.id, canales,
+                     target_user.login if target_user else "—")
 
     def _notify_message(self):
         """Texto humano del resultado del job (contextual: fix vs upload)."""
@@ -275,9 +338,9 @@ class SaguiOrchestrationJob(models.Model):
         self.ensure_one()
         return self.activity_id.user_id if (self.activity_id and self.activity_id.user_id) else False
 
-    def _notify_discuss(self, msg):
+    def _notify_discuss(self, msg, target=None):
         try:
-            target = self._notify_target_user()
+            target = target or self._notify_target_user()
             if not target:
                 _logger.info("Sagui notify job #%s: sin usuario destino para Discuss, salto.", self.id)
                 return

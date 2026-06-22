@@ -11,6 +11,7 @@
         <field name="branch"/>
         <field name="modulo"/>
         <field name="tests_cmd"/>
+        <field name="auto_upload"/>
         <field name="company_id"/>
         <field name="partner_id"/>
       </list>
@@ -30,6 +31,7 @@
               <field name="branch"/>
               <field name="modulo"/>
               <field name="tests_cmd" placeholder="ej. pytest -q  /  odoo-bin -u modulo --test-enable"/>
+              <field name="auto_upload"/>
             </group>
             <group string="Resolución (opcional)">
               <field name="company_id"/>
