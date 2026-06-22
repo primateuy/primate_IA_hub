@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Aislamiento por usuario. Reglas GLOBALES (sin grupos) → aplican a TODO acceso no-sudo, sin
+       bypass. Cada usuario ve/maneja SOLO sus automatizaciones y sus ejecuciones. El cron enumera
+       con sudo (scheduler/infra) y ejecuta cada una como su dueño, así que estas reglas mandan en
+       todo acceso de negocio. -->
+  <record id="rule_sagui_automation_own" model="ir.rule">
+    <field name="name">Sagui: cada usuario ve solo sus automatizaciones</field>
+    <field name="model_id" ref="model_sagui_automation"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+  </record>
+
+  <record id="rule_sagui_automation_run_own" model="ir.rule">
+    <field name="name">Sagui: cada usuario ve solo las ejecuciones de sus automatizaciones</field>
+    <field name="model_id" ref="model_sagui_automation_run"/>
+    <field name="domain_force">[('automation_id.user_id', '=', user.id)]</field>
+  </record>
+
+  <!-- Propuestas (inbox): las ve el DUEÑO de la automatización O el APROBADOR designado. -->
+  <record id="rule_sagui_automation_proposal_own" model="ir.rule">
+    <field name="name">Sagui: propuestas visibles para dueño o aprobador</field>
+    <field name="model_id" ref="model_sagui_automation_proposal"/>
+    <field name="domain_force">['|', ('automation_id.user_id', '=', user.id), ('approver_id', '=', user.id)]</field>
+  </record>
+
+  <!-- Auditoría compartida (automatización o receta): la ve el dueño/aprobador de la automatización,
+       el dueño de la receta, o quien ejecutó. -->
+  <record id="rule_sagui_task_action_log_own" model="ir.rule">
+    <field name="name">Sagui: auditoría visible para dueño/aprobador/ejecutor</field>
+    <field name="model_id" ref="model_sagui_task_action_log"/>
+    <field name="domain_force">['|', '|', '|', ('automation_id.user_id', '=', user.id), ('automation_id.approver_id', '=', user.id), ('recipe_id.user_id', '=', user.id), ('user_id', '=', user.id)]</field>
+  </record>
+
+  <!-- Recetas: lectura propia O compartida; escritura/creación/borrado solo propias. -->
+  <record id="rule_sagui_recipe_read" model="ir.rule">
+    <field name="name">Sagui: recetas propias o compartidas (lectura)</field>
+    <field name="model_id" ref="model_sagui_recipe"/>
+    <field name="domain_force">['|', ('user_id', '=', user.id), ('shared', '=', True)]</field>
+    <field name="perm_read" eval="True"/>
+    <field name="perm_write" eval="False"/><field name="perm_create" eval="False"/><field name="perm_unlink" eval="False"/>
+  </record>
+  <record id="rule_sagui_recipe_write" model="ir.rule">
+    <field name="name">Sagui: editar/borrar solo recetas propias</field>
+    <field name="model_id" ref="model_sagui_recipe"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+    <field name="perm_read" eval="False"/>
+    <field name="perm_write" eval="True"/><field name="perm_create" eval="True"/><field name="perm_unlink" eval="True"/>
+  </record>
+  <record id="rule_sagui_recipe_param_read" model="ir.rule">
+    <field name="name">Sagui: params de recetas visibles (propias o compartidas)</field>
+    <field name="model_id" ref="model_sagui_recipe_param"/>
+    <field name="domain_force">['|', ('recipe_id.user_id', '=', user.id), ('recipe_id.shared', '=', True)]</field>
+    <field name="perm_read" eval="True"/>
+    <field name="perm_write" eval="False"/><field name="perm_create" eval="False"/><field name="perm_unlink" eval="False"/>
+  </record>
+  <record id="rule_sagui_recipe_param_write" model="ir.rule">
+    <field name="name">Sagui: editar params solo de recetas propias</field>
+    <field name="model_id" ref="model_sagui_recipe_param"/>
+    <field name="domain_force">[('recipe_id.user_id', '=', user.id)]</field>
+    <field name="perm_read" eval="False"/>
+    <field name="perm_write" eval="True"/><field name="perm_create" eval="True"/><field name="perm_unlink" eval="True"/>
+  </record>
+</odoo>

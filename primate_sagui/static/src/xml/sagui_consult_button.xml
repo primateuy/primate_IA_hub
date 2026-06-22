@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Template propio del botón -->
+    <t t-name="primate_sagui.SaguiConsultButton">
+        <button type="button"
+                class="btn btn-secondary o_sagui_consult_btn"
+                t-on-click="onClick"
+                title="Consultar a Sagui sobre este registro">
+            <i class="fa fa-comments me-1" role="img" aria-label="Sagui"/>
+            <span class="d-none d-md-inline">Consultar a Sagui</span>
+        </button>
+    </t>
+
+    <!-- Inyección en el control panel de TODOS los formularios.
+         Se agrega antes del CogMenu (slot control-panel-additional-actions).
+         Solo en registros guardados (resId), nunca en el propio chat de Discuss. -->
+    <t t-inherit="web.FormView" t-inherit-mode="extension">
+        <xpath expr="//CogMenu" position="before">
+            <SaguiConsultButton
+                t-if="model.root.resId and props.resModel !== 'discuss.channel'"
+                resModel="props.resModel"
+                resId="model.root.resId"/>
+        </xpath>
+    </t>
+
+</templates>

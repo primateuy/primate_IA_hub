@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Auditoría de escrituras propuestas por Sagui (solo administración). -->
+  <record id="view_sagui_pending_write_list" model="ir.ui.view">
+    <field name="name">primate.sagui.pending.write.list</field>
+    <field name="model">primate.sagui.pending.write</field>
+    <field name="arch" type="xml">
+      <list create="false" edit="false">
+        <field name="create_date"/>
+        <field name="user_id"/>
+        <field name="operation"/>
+        <field name="model_name"/>
+        <field name="token"/>
+        <field name="state"
+               decoration-success="state == 'done'"
+               decoration-muted="state in ('cancelled','expired')"
+               decoration-danger="state == 'error'"
+               widget="badge"/>
+        <field name="result_info"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_sagui_pending_write_form" model="ir.ui.view">
+    <field name="name">primate.sagui.pending.write.form</field>
+    <field name="model">primate.sagui.pending.write</field>
+    <field name="arch" type="xml">
+      <form create="false" edit="false">
+        <sheet>
+          <group>
+            <group>
+              <field name="token"/>
+              <field name="state"/>
+              <field name="operation"/>
+              <field name="model_name"/>
+            </group>
+            <group>
+              <field name="user_id"/>
+              <field name="channel_id"/>
+              <field name="res_ids"/>
+              <field name="result_info"/>
+            </group>
+          </group>
+          <separator string="Resumen"/>
+          <field name="summary"/>
+          <separator string="Valores (JSON)"/>
+          <field name="values_json"/>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_sagui_pending_write" model="ir.actions.act_window">
+    <field name="name">Escrituras de Sagui</field>
+    <field name="res_model">primate.sagui.pending.write</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="menu_sagui_pending_write" name="Escrituras de Sagui"
+            parent="base.menu_administration"
+            action="action_sagui_pending_write" groups="base.group_system"/>
+</odoo>

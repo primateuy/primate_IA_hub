@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Partner del bot Sagui. Activo para que se pueda invitar/DM en Discuss
+       (a diferencia de OdooBot/base.partner_root, que va inactivo). -->
+  <record id="partner_sagui_bot" model="res.partner">
+    <field name="name">Sagui</field>
+    <field name="is_company" eval="False"/>
+    <field name="active" eval="True"/>
+    <field name="email">sagui@primate.uy</field>
+  </record>
+
+  <!-- Usuario interno "bot" para Sagui. Verificado contra v19 (addons/mail_bot
+       y addons/mail/data/res_partner_data.xml): OdooBot usa notification_type
+       'inbox' para no recibir mails. Lo marcamos usuario interno (group_user)
+       sin permisos de sistema: las tools se ejecutan SIEMPRE como el usuario que
+       pregunta (with_user), nunca como Sagui, así que el bot no necesita
+       privilegios elevados. -->
+  <record id="user_sagui_bot" model="res.users">
+    <field name="name">Sagui</field>
+    <field name="login">sagui_bot</field>
+    <field name="partner_id" ref="partner_sagui_bot"/>
+    <field name="notification_type">inbox</field>
+    <field name="active" eval="True"/>
+    <field name="share" eval="False"/>
+    <field name="group_ids" eval="[Command.set([ref('base.group_user')])]"/>
+  </record>
+</odoo>

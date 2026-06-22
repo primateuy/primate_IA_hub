@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Recetas de ejemplo (compartidas con el equipo). noupdate: el usuario puede editarlas/borrarlas
+       sin que un upgrade las pise. Dueño = admin. -->
+
+  <!-- 1) Onboarding de cliente nuevo (propone: crea contacto + actividad de bienvenida) -->
+  <record id="recipe_onboarding" model="sagui.recipe">
+    <field name="name">Onboarding de cliente nuevo</field>
+    <field name="description">Da de alta un contacto y le crea una actividad de bienvenida.</field>
+    <field name="category">CRM</field>
+    <field name="tags">alta,cliente,onboarding</field>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="shared" eval="True"/>
+    <field name="mode">propose</field>
+    <field name="output_type">chat</field>
+    <field name="allow_unlink" eval="False"/>
+    <field name="instruction">Dá de alta un cliente nuevo en Odoo:
+1) Creá el contacto {nombre} (res.partner) con email {email} y teléfono {telefono}, marcado como empresa si corresponde.
+2) Creá una actividad de bienvenida (mail.activity) para dentro de 2 días sobre ese contacto, asignada al usuario actual.
+Resumí en una línea qué creaste. No borres nada.</field>
+    <field name="param_ids" eval="[
+      (0,0,{'sequence':0,'name':'nombre','label':'Nombre del cliente','ptype':'text','required':True}),
+      (0,0,{'sequence':1,'name':'email','label':'Email','ptype':'text'}),
+      (0,0,{'sequence':2,'name':'telefono','label':'Teléfono','ptype':'text'})
+    ]"/>
+  </record>
+
+  <!-- 2) Reporte mensual de ventas (solo lectura, salida archivo Excel) -->
+  <record id="recipe_reporte_ventas" model="sagui.recipe">
+    <field name="name">Reporte mensual de ventas</field>
+    <field name="description">Listado de pedidos de venta confirmados del mes, descargable como Excel.</field>
+    <field name="category">Ventas</field>
+    <field name="tags">reporte,ventas,excel</field>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="shared" eval="True"/>
+    <field name="mode">readonly</field>
+    <field name="output_type">file</field>
+    <field name="instruction">Generá un reporte de las ventas del mes {mes}: buscá los pedidos de venta (sale.order) confirmados (state 'sale') de ese mes. Por cada pedido, una fila con: número, cliente, fecha del pedido, monto total. Ordená por monto descendente.</field>
+    <field name="param_ids" eval="[
+      (0,0,{'sequence':0,'name':'mes','label':'Mes (ej. 2026-06)','ptype':'text','required':True,'default':'este mes'})
+    ]"/>
+  </record>
+
+  <!-- 3) Revisar pedidos trabados (solo lectura, alerta) -->
+  <record id="recipe_pedidos_trabados" model="sagui.recipe">
+    <field name="name">Revisar pedidos trabados</field>
+    <field name="description">Detecta pedidos de venta estancados y explica por qué.</field>
+    <field name="category">Ventas</field>
+    <field name="tags">alertas,seguimiento</field>
+    <field name="user_id" ref="base.user_admin"/>
+    <field name="shared" eval="True"/>
+    <field name="mode">readonly</field>
+    <field name="output_type">chat</field>
+    <field name="instruction">Revisá los pedidos de venta (sale.order) que estén en estado borrador desde hace más de {dias} días, o confirmados pero sin entregar/facturar. Resumí los que parezcan trabados, con cliente, monto y el motivo probable del estancamiento. Si no hay ninguno, respondé NADA_QUE_REPORTAR.</field>
+    <field name="param_ids" eval="[
+      (0,0,{'sequence':0,'name':'dias','label':'Días de antigüedad','ptype':'number','required':False,'default':'7'})
+    ]"/>
+  </record>
+</odoo>

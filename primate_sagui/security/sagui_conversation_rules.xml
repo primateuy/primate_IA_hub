@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Aislamiento por usuario. Reglas GLOBALES (sin grupos) → aplican a TODOS los accesos no-sudo,
+       sin posibilidad de bypass por pertenencia a otro grupo. Cada usuario ve/maneja SOLO lo suyo.
+       (El controller SSE accede con env(user=uid), nunca sudo, así que estas reglas mandan.) -->
+  <record id="rule_sagui_conversation_own" model="ir.rule">
+    <field name="name">Sagui: cada usuario ve solo sus conversaciones</field>
+    <field name="model_id" ref="model_sagui_conversation"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+  </record>
+
+  <record id="rule_sagui_message_own" model="ir.rule">
+    <field name="name">Sagui: cada usuario ve solo los mensajes de sus conversaciones</field>
+    <field name="model_id" ref="model_sagui_message"/>
+    <field name="domain_force">[('conversation_id.user_id', '=', user.id)]</field>
+  </record>
+</odoo>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Conectores MCP (admin). El admin define la base; los usuarios agregan su credencial. -->
+  <record id="view_sagui_connector_list" model="ir.ui.view">
+    <field name="name">sagui.connector.list</field>
+    <field name="model">sagui.connector</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="connector_type"/>
+        <field name="transport"/>
+        <field name="scope"/>
+        <field name="enabled"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_sagui_connector_form" model="ir.ui.view">
+    <field name="name">sagui.connector.form</field>
+    <field name="model">sagui.connector</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="connector_type"/>
+              <field name="transport"/>
+              <field name="scope"/>
+              <field name="enabled"/>
+            </group>
+            <group>
+              <field name="command" placeholder="/ruta/al/.venv/bin/python"/>
+              <field name="args" placeholder="-m odoo_mcp"/>
+              <field name="url" invisible="transport != 'remote'"/>
+              <field name="allowed_tools" placeholder="vacío = todas"/>
+            </group>
+          </group>
+          <group string="Config base (JSON, no secreto)">
+            <field name="config_json" nolabel="1"
+                   placeholder='{"ODOO_URL": "https://www.primate.uy", "ODOO_DB": "primate_prod"}'/>
+          </group>
+          <group string="Tools descubiertas (cache)">
+            <field name="discovered_tools_json" nolabel="1" readonly="1"/>
+          </group>
+          <notebook>
+            <page string="Credenciales (por usuario)">
+              <field name="credential_ids">
+                <list editable="bottom">
+                  <field name="user_id"/>
+                  <field name="username"/>
+                  <field name="api_key_input" password="True" string="API key (escribir para cambiar)"/>
+                  <field name="api_key_set" string="Configurada"/>
+                  <button name="action_test_connection" type="object" string="Probar" icon="fa-plug"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_sagui_connector" model="ir.actions.act_window">
+    <field name="name">Conectores Sagui</field>
+    <field name="res_model">sagui.connector</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="menu_sagui_connector" name="Conectores Sagui"
+            parent="base.menu_administration" action="action_sagui_connector"
+            groups="base.group_system" sequence="90"/>
+</odoo>

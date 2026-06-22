@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Credenciales de conector: cada usuario ve/usa SOLO las suyas. Regla GLOBAL (no bypasseable).
+       El conector base (sagui.connector) lo define el admin y es legible por todos (ACL read);
+       lo sensible (la API key) vive cifrado en la credencial per-user, aislada por esta regla. -->
+  <record id="rule_sagui_connector_credential_own" model="ir.rule">
+    <field name="name">Sagui: cada usuario ve solo sus credenciales de conector</field>
+    <field name="model_id" ref="model_sagui_connector_credential"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+  </record>
+</odoo>

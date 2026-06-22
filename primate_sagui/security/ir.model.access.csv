@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sagui_pending_write_system,primate.sagui.pending.write.system,model_primate_sagui_pending_write,base.group_system,1,1,1,1
+access_sagui_conversation_user,sagui.conversation.user,model_sagui_conversation,base.group_user,1,1,1,1
+access_sagui_message_user,sagui.message.user,model_sagui_message,base.group_user,1,1,1,1
+access_sagui_automation_user,sagui.automation.user,model_sagui_automation,base.group_user,1,1,1,1
+access_sagui_automation_run_user,sagui.automation.run.user,model_sagui_automation_run,base.group_user,1,1,1,1
+access_sagui_automation_proposal_user,sagui.automation.proposal.user,model_sagui_automation_proposal,base.group_user,1,1,1,1
+access_sagui_task_action_log_user,sagui.task.action.log.user,model_sagui_task_action_log,base.group_user,1,1,1,0
+access_sagui_recipe_user,sagui.recipe.user,model_sagui_recipe,base.group_user,1,1,1,1
+access_sagui_recipe_param_user,sagui.recipe.param.user,model_sagui_recipe_param,base.group_user,1,1,1,1
+access_sagui_connector_user,sagui.connector.user,model_sagui_connector,base.group_user,1,0,0,0
+access_sagui_connector_admin,sagui.connector.admin,model_sagui_connector,base.group_system,1,1,1,1
+access_sagui_connector_credential_user,sagui.connector.credential.user,model_sagui_connector_credential,base.group_user,1,1,1,1

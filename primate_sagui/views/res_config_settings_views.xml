@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Agrega un bloque "Sagui" a la app "Primate IA" (definida en primate_ai_connector)
+       con la whitelist de modelos con escritura habilitada. -->
+  <record id="res_config_settings_view_form_primate_sagui" model="ir.ui.view">
+    <field name="name">res.config.settings.view.form.primate.sagui</field>
+    <field name="model">res.config.settings</field>
+    <field name="inherit_id" ref="primate_ai_connector.res_config_settings_view_form_primate_ai"/>
+    <field name="arch" type="xml">
+      <xpath expr="//app[@name='primate_ai']" position="inside">
+        <block title="Sagui — Escritura de datos" name="primate_sagui_block">
+          <setting string="Modelos con escritura habilitada"
+                   help="Lista separada por comas de modelos técnicos donde Sagui puede proponer crear/modificar registros. Siempre requiere confirmación del usuario en el chat. Vacío = solo lectura.">
+            <field name="primate_sagui_write_whitelist" placeholder="ej. res.partner, crm.lead"/>
+          </setting>
+        </block>
+      </xpath>
+    </field>
+  </record>
+</odoo>
