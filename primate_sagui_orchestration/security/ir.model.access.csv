@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sagui_orchestration_job_user,sagui.orchestration.job.user,model_sagui_orchestration_job,base.group_user,1,1,1,0
+access_sagui_orchestration_job_admin,sagui.orchestration.job.admin,model_sagui_orchestration_job,base.group_system,1,1,1,1
+access_sagui_repo_mapping_user,sagui.repo.mapping.user,model_sagui_repo_mapping,base.group_user,1,0,0,0
+access_sagui_repo_mapping_admin,sagui.repo.mapping.admin,model_sagui_repo_mapping,base.group_system,1,1,1,1
+access_sagui_activity_capture_user,sagui.activity.capture.user,model_sagui_activity_capture,base.group_user,1,1,1,1

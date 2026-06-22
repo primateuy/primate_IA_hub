@@ -1,0 +1,4 @@
+.env
+sagui_runner.log
+__pycache__/
+sandbox/

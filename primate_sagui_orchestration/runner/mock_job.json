@@ -1,0 +1,8 @@
+{
+  "job_id": "mock-001",
+  "type": "fix",
+  "repo_path": "./sandbox",
+  "prompt": "Creá un archivo HELLO.txt con la fecha y hora actuales.",
+  "allowed_tools": "Read Write Edit",
+  "max_turns": 5
+}

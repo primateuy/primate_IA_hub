@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- ===== Mapeo cliente → repo ===== -->
+  <record id="view_sagui_repo_mapping_list" model="ir.ui.view">
+    <field name="name">sagui.repo.mapping.list</field>
+    <field name="model">sagui.repo.mapping</field>
+    <field name="arch" type="xml">
+      <list editable="bottom">
+        <field name="client_key"/>
+        <field name="repo_path"/>
+        <field name="branch"/>
+        <field name="modulo"/>
+        <field name="tests_cmd"/>
+        <field name="company_id"/>
+        <field name="partner_id"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_sagui_repo_mapping_form" model="ir.ui.view">
+    <field name="name">sagui.repo.mapping.form</field>
+    <field name="model">sagui.repo.mapping</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <group>
+              <field name="client_key"/>
+              <field name="repo_path" placeholder="/ruta/abs/al/repo"/>
+              <field name="branch"/>
+              <field name="modulo"/>
+              <field name="tests_cmd" placeholder="ej. pytest -q  /  odoo-bin -u modulo --test-enable"/>
+            </group>
+            <group string="Resolución (opcional)">
+              <field name="company_id"/>
+              <field name="partner_id"/>
+            </group>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_sagui_repo_mapping" model="ir.actions.act_window">
+    <field name="name">Mapeo cliente → repo</field>
+    <field name="res_model">sagui.repo.mapping</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- ===== Wizard: traer pendientes ===== -->
+  <record id="view_sagui_activity_capture_form" model="ir.ui.view">
+    <field name="name">sagui.activity.capture.form</field>
+    <field name="model">sagui.activity.capture</field>
+    <field name="arch" type="xml">
+      <form string="Traer pendientes de hoy">
+        <div class="oe_title">
+          <h1>Traer pendientes de hoy</h1>
+          <p>Sagui junta tus actividades vencidas o de hoy, escribe un .md de contexto en el vault y
+             encola un job de fix por cada una (las que no tengan repo mapeado se saltan).</p>
+        </div>
+        <field name="result" readonly="1" invisible="not result" nolabel="1"
+               style="white-space:pre-wrap; font-family:monospace;"/>
+        <footer>
+          <button name="action_capture" type="object" string="Traer pendientes de hoy" class="btn-primary"/>
+          <button string="Cerrar" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_sagui_activity_capture" model="ir.actions.act_window">
+    <field name="name">Traer pendientes de hoy</field>
+    <field name="res_model">sagui.activity.capture</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <!-- ===== Menús (bajo Ajustes, junto a los jobs) ===== -->
+  <menuitem id="menu_sagui_activity_capture" name="Traer pendientes de hoy (Sagui)"
+            parent="base.menu_administration" action="action_sagui_activity_capture"
+            groups="base.group_user" sequence="93"/>
+  <menuitem id="menu_sagui_repo_mapping" name="Mapeo cliente → repo (Sagui)"
+            parent="base.menu_administration" action="action_sagui_repo_mapping"
+            groups="base.group_system" sequence="94"/>
+</odoo>

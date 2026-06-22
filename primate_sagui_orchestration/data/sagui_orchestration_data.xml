@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <!-- Canales de notificación del done de un job 'fix' (coma). Editable en
+       Ajustes → Técnico → Parámetros del sistema. Default: 'discuss' (sin setup).
+       Para sumar Telegram/webhook: poné 'discuss,telegram,webhook' y configurá:
+         - sagui.telegram_bot_token / sagui.telegram_chat_id
+         - sagui.notify_webhook_url  (POST JSON; enganchá WhatsApp/lo que sea) -->
+  <record id="param_notify_channels" model="ir.config_parameter">
+    <field name="key">sagui.notify_channels</field>
+    <field name="value">discuss</field>
+  </record>
+</odoo>

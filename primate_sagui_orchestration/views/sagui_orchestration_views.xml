@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Lista de jobs de orquestación (para crear/ver dummies a mano en fase 1). v19: <list>. -->
+  <record id="view_sagui_orchestration_job_list" model="ir.ui.view">
+    <field name="name">sagui.orchestration.job.list</field>
+    <field name="model">sagui.orchestration.job</field>
+    <field name="arch" type="xml">
+      <list decoration-success="state == 'done'" decoration-danger="state in ('error','rejected')"
+            decoration-warning="state == 'awaiting_approval'" decoration-muted="state == 'pending'">
+        <field name="name"/>
+        <field name="job_type"/>
+        <field name="state"/>
+        <field name="repo_path"/>
+        <field name="tests_status"/>
+        <field name="pr_url" widget="url"/>
+        <field name="num_turns"/>
+        <field name="cost_usd"/>
+        <field name="done_at"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_sagui_orchestration_job_form" model="ir.ui.view">
+    <field name="name">sagui.orchestration.job.form</field>
+    <field name="model">sagui.orchestration.job</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <!-- Gate humano (fase 3): aprobar/rechazar el upload antes de pushear. -->
+          <button name="action_approve_upload" type="object" string="Aprobar y subir" class="btn-primary"
+                  invisible="job_type != 'upload' or state != 'awaiting_approval'"/>
+          <button name="action_reject_upload" type="object" string="Rechazar"
+                  invisible="job_type != 'upload' or state != 'awaiting_approval'"/>
+          <field name="state" widget="statusbar"
+                 statusbar_visible="pending,awaiting_approval,started,done"/>
+        </header>
+        <sheet>
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="job_type"/>
+              <field name="repo_path" placeholder="/ruta/abs/al/repo"/>
+              <field name="branch"/>
+              <field name="work_branch" readonly="1"/>
+              <field name="allowed_tools" placeholder="Read Write Edit" invisible="job_type == 'upload'"/>
+              <field name="max_turns" invisible="job_type == 'upload'"/>
+              <field name="tests_cmd" invisible="job_type == 'upload'"/>
+              <field name="activity_id"/>
+              <field name="source_job_id" invisible="not source_job_id"/>
+            </group>
+            <group string="Resultado (lo reporta el runner)">
+              <field name="cost_usd" invisible="job_type == 'upload'"/>
+              <field name="num_turns" invisible="job_type == 'upload'"/>
+              <field name="tests_status" invisible="job_type == 'upload'"/>
+              <field name="commit_sha" invisible="not commit_sha"/>
+              <field name="pr_url" widget="url" invisible="not pr_url"/>
+              <field name="started_at"/>
+              <field name="done_at"/>
+            </group>
+          </group>
+          <group string="Prompt" invisible="job_type == 'upload'">
+            <field name="prompt" nolabel="1" placeholder="Instrucción para Claude Code…"/>
+          </group>
+          <group string="Pull Request" invisible="job_type != 'upload'">
+            <field name="pr_title"/>
+            <field name="pr_body" placeholder="Cuerpo del PR…"/>
+          </group>
+          <group string="Resumen" invisible="not summary">
+            <field name="summary" nolabel="1" readonly="1"/>
+          </group>
+          <group string="Salida de tests (cola)" invisible="not tests_output_tail">
+            <field name="tests_output_tail" nolabel="1" readonly="1"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_sagui_orchestration_job" model="ir.actions.act_window">
+    <field name="name">Jobs de orquestación</field>
+    <field name="res_model">sagui.orchestration.job</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="menu_sagui_orchestration_job" name="Jobs de orquestación (Sagui)"
+            parent="base.menu_administration" action="action_sagui_orchestration_job"
+            groups="base.group_system" sequence="92"/>
+</odoo>
