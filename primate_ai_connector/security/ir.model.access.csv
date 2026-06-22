@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_primate_ai_usage_log_user,primate.ai.usage.log.user,model_primate_ai_usage_log,base.group_user,1,0,0,0
+access_primate_ai_usage_log_admin,primate.ai.usage.log.admin,model_primate_ai_usage_log,base.group_system,1,1,1,1
+access_primate_ai_action_user,primate.ai.action.user,model_primate_ai_action,base.group_user,1,0,0,0
+access_primate_ai_action_admin,primate.ai.action.admin,model_primate_ai_action,base.group_system,1,1,1,1

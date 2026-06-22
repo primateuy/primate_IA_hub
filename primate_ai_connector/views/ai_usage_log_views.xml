@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_primate_ai_usage_log_list" model="ir.ui.view">
+    <field name="name">primate.ai.usage.log.list</field>
+    <field name="model">primate.ai.usage.log</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="create_date"/>
+        <field name="user_id"/>
+        <field name="model_name"/>
+        <field name="input_tokens"/>
+        <field name="output_tokens"/>
+        <field name="cache_write_tokens" optional="show"/>
+        <field name="cache_read_tokens" optional="show"/>
+        <field name="cost"/>
+      </list>
+    </field>
+  </record>
+  <record id="action_primate_ai_usage_log" model="ir.actions.act_window">
+    <field name="name">Uso de IA</field>
+    <field name="res_model">primate.ai.usage.log</field>
+    <field name="view_mode">list,pivot</field>
+  </record>
+  <menuitem id="menu_primate_ai_usage_log" name="Uso de IA"
+            parent="base.menu_administration"
+            action="action_primate_ai_usage_log" groups="base.group_system"/>
+</odoo>

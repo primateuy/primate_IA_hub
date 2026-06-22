@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="0">
+  <!-- Grupo MANAGER: ve el consumo/costo de TODOS los usuarios (desglose por usuario en el
+       dashboard). El usuario común solo ve lo suyo (record rules de abajo). -->
+  <record id="group_ai_manager" model="res.groups">
+    <field name="name">IA: Manager de consumo</field>
+    <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
+  </record>
+
+  <!-- ==== Record rules: primate.ai.usage.log ==== -->
+  <record id="rule_usage_log_own" model="ir.rule">
+    <field name="name">Usage log: solo el propio</field>
+    <field name="model_id" ref="model_primate_ai_usage_log"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+    <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+  </record>
+  <record id="rule_usage_log_all" model="ir.rule">
+    <field name="name">Usage log: todos (manager)</field>
+    <field name="model_id" ref="model_primate_ai_usage_log"/>
+    <field name="domain_force">[(1, '=', 1)]</field>
+    <field name="groups" eval="[(4, ref('group_ai_manager')), (4, ref('base.group_system'))]"/>
+  </record>
+
+  <!-- ==== Record rules: primate.ai.action ==== -->
+  <record id="rule_ai_action_own" model="ir.rule">
+    <field name="name">Acción IA: solo la propia</field>
+    <field name="model_id" ref="model_primate_ai_action"/>
+    <field name="domain_force">[('user_id', '=', user.id)]</field>
+    <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+  </record>
+  <record id="rule_ai_action_all" model="ir.rule">
+    <field name="name">Acción IA: todas (manager)</field>
+    <field name="model_id" ref="model_primate_ai_action"/>
+    <field name="domain_force">[(1, '=', 1)]</field>
+    <field name="groups" eval="[(4, ref('group_ai_manager')), (4, ref('base.group_system'))]"/>
+  </record>
+</odoo>
