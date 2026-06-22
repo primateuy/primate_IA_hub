@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Variables de marca: APPEND a las variables primarias para cargar DESPUÉS de
+         website (donde se definen $o-color-palettes, o-make-palette, etc.). -->
+    <asset id="theme_design_pipa.primary_variables_scss" name="Design Pipa primary variables SCSS">
+        <field name="key">theme_design_pipa.primary_variables_scss</field>
+        <bundle directive="append">web._assets_primary_variables</bundle>
+        <path>theme_design_pipa/static/src/scss/primary_variables.scss</path>
+    </asset>
+
+</odoo>

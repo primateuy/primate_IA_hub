@@ -1,0 +1,55 @@
+// Identidad de marca: paleta POR ROL + fuentes + preset de website activo.
+// [VERIFICADO v19] mismo patrón que un tema shipping (theme_graphene): este SCSS se
+// registra con directive="append" en web._assets_primary_variables (ver data/ir_asset.xml),
+// así carga DESPUÉS de website/.../primary_variables.scss y ya existen $o-color-palettes,
+// o-make-palette(), $o-selected-color-palettes-names. Nunca prepend (rompe: undefined var).
+// Sin make_scss_customization: la paleta y las fuentes viven acá, compiladas al instalar.
+
+// Paleta de la marca (Design Pipa). Sistema nuevo o-color-1..5 → alimenta o_cc1..o_cc5:
+//   o-color-1 acento (naranja) · 2 oscuro · 3 crema (fondos claros) · 4 blanco · 5 oscuro (bandas).
+$o-color-palettes: map-merge($o-color-palettes, (
+    'design-pipa': o-make-palette(#d2552b, #161412, (
+        'o-color-3': #f7f4ee,
+        'o-color-4': #ffffff,
+        'o-color-5': #161412,
+        'menu': 4,        // header sobre fondo blanco
+        'footer': 5,      // footer sobre banda oscura
+        'copyright': 5,
+        // Botón primario sobre fondos OSCUROS (o_cc3/o_cc5) = naranja de marca + texto blanco.
+        // o-make-palette, al no encontrar contraste suficiente, lo dejaba blanco (poco on-brand y
+        // chato sobre el negro); lo forzamos al acento, que tiene buen contraste contra el oscuro.
+        'o-cc3-btn-primary': 'o-color-1', 'o-cc3-btn-primary-text': 'o-color-4',
+        'o-cc5-btn-primary': 'o-color-1', 'o-cc5-btn-primary-text': 'o-color-4',
+    )),
+));
+$o-selected-color-palettes-names: append($o-selected-color-palettes-names, 'design-pipa');
+
+// Fuentes matcheadas (display condensada + body grotesca), cargadas como assets del tema.
+$o-theme-font-configs: map-merge($o-theme-font-configs, (
+    'Anton': (
+        'family': ('Anton', sans-serif),
+        'url': 'Anton',
+    ),
+    'Inter': (
+        'family': ('Inter', sans-serif),
+        'url': 'Inter:300,400,500,600,700',
+    ),
+));
+
+// Preset de website ACTIVO: fija la paleta y las fuentes de la marca como valores por defecto.
+// Reemplaza la lista base (un único entry, índice 1) que secondary_variables toma como activa.
+$o-website-values-palettes: (
+    (
+        'color-palettes-name': 'design-pipa',
+        'font': 'Inter',
+        'headings-font': 'Anton',
+        'default-headings-font': 'Anton',
+
+        'btn-padding-x': 1rem,
+        'btn-padding-x-sm': .5rem,
+        'btn-padding-y-lg': 1rem,
+        'btn-padding-x-lg': 2.5rem,
+        'btn-border-radius-lg': 2rem,
+    ),
+);
+$o-website-values-palette-number: 1;

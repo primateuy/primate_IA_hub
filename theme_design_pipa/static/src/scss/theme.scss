@@ -1,0 +1,9 @@
+// Estilo on-brand del frontend (header/footer/botones). Namespaceado por scope real de Odoo.
+// (Se irá completando; la paleta/fuentes ya vienen de primary_variables.scss.)
+
+// Botones primarios con el peso de la marca.
+.btn-primary {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
