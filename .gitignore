@@ -1,0 +1,24 @@
+# --- Entornos / caché (no van al repo) ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Config local y SECRETOS (NUNCA al repo) ---
+ia_jarvis_bot.conf
+.env
+*.env
+!*.env.example
+primate_sagui_orchestration/runner/.env
+
+# --- IDE / SO / tooling local ---
+.idea/
+.vscode/
+.DS_Store
+.claude/
+
+# --- Backups y artefactos de runtime (quedan en disco, no al repo) ---
+.backups/
+*.log
+# Sandbox del runner (repo git de prueba descartable)
+primate_sagui_orchestration/runner/sandbox/
