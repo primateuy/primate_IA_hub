@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sagui_design_run_list" model="ir.ui.view">
+        <field name="name">sagui.design.run.list</field>
+        <field name="model">sagui.design.run</field>
+        <field name="arch" type="xml">
+            <list string="Generaciones de sitio">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="source"/>
+                <field name="render_mode"/>
+                <field name="user_id"/>
+                <field name="page_url"/>
+                <field name="loops_done"/>
+                <field name="open_finding_count"/>
+                <field name="verdict" widget="badge"
+                       decoration-success="verdict == 'pass'"
+                       decoration-warning="verdict == 'fail'"
+                       decoration-danger="verdict == 'error'"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sagui_design_run_form" model="ir.ui.view">
+        <field name="name">sagui.design.run.form</field>
+        <field name="model">sagui.design.run</field>
+        <field name="arch" type="xml">
+            <form string="Generación de sitio">
+                <header>
+                    <button name="action_revert_homepage" type="object" string="Revertir homepage"
+                            invisible="not prev_homepage_url or state == 'reverted'"
+                            confirm="¿Restauro la homepage anterior?"/>
+                    <button name="action_view_evidence" type="object" string="Ver evidencia"
+                            invisible="not verification_ids"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nombre del sitio"/></h1>
+                    </div>
+                    <group>
+                        <group string="Encargo">
+                            <field name="role_id"/>
+                            <field name="user_id"/>
+                            <field name="source"/>
+                            <field name="render_mode"/>
+                            <field name="documents_folder"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="website_id"/>
+                            <field name="page_id"/>
+                            <field name="page_url" widget="url"/>
+                            <field name="prev_homepage_url"/>
+                            <field name="verdict"/>
+                            <field name="loops_done"/>
+                            <field name="open_finding_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Brief y plan">
+                            <field name="brief" placeholder="Brief del negocio"/>
+                            <separator string="Autocrítica del plan (etapa 2)"/>
+                            <field name="critique"/>
+                            <separator string="Plan (JSON)"/>
+                            <field name="plan_json"/>
+                        </page>
+                        <page string="Tokens y secciones">
+                            <separator string="Tokens aplicados"/>
+                            <field name="tokens_json"/>
+                            <separator string="Schema de secciones"/>
+                            <field name="schema_json"/>
+                        </page>
+                        <page string="Verificación">
+                            <field name="report" readonly="1"/>
+                            <separator string="Hallazgos abiertos"/>
+                            <field name="open_findings_json" readonly="1"/>
+                            <separator string="Verificaciones"/>
+                            <field name="verification_ids" readonly="1">
+                                <list>
+                                    <field name="loop_no"/>
+                                    <field name="verdict"/>
+                                    <field name="finding_count"/>
+                                    <field name="fail_count"/>
+                                    <field name="evidence_labels"/>
+                                    <field name="reviewer_provider"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Material">
+                            <separator string="Referencias"/>
+                            <field name="reference_attachment_ids" widget="many2many_binary"/>
+                            <separator string="Assets (logo, fotos)"/>
+                            <field name="asset_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sagui_design_run" model="ir.actions.act_window">
+        <field name="name">Generaciones de sitio</field>
+        <field name="res_model">sagui.design.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_sagui_designer_root" name="Diseñador Web" sequence="80"/>
+    <menuitem id="menu_sagui_design_run" name="Generaciones" sequence="10"
+              parent="menu_sagui_designer_root" action="action_sagui_design_run"/>
+
+</odoo>

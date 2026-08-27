@@ -11,3 +11,9 @@ access_sagui_recipe_param_user,sagui.recipe.param.user,model_sagui_recipe_param,
 access_sagui_connector_user,sagui.connector.user,model_sagui_connector,base.group_user,1,0,0,0
 access_sagui_connector_admin,sagui.connector.admin,model_sagui_connector,base.group_system,1,1,1,1
 access_sagui_connector_credential_user,sagui.connector.credential.user,model_sagui_connector_credential,base.group_user,1,1,1,1
+access_sagui_skill_user,sagui.skill.user,model_sagui_skill,base.group_user,1,0,0,0
+access_sagui_skill_admin,sagui.skill.admin,model_sagui_skill,base.group_system,1,1,1,1
+access_sagui_role_user,sagui.role.user,model_sagui_role,base.group_user,1,0,0,0
+access_sagui_role_admin,sagui.role.admin,model_sagui_role,base.group_system,1,1,1,1
+access_sagui_verification_user,sagui.verification.user,model_sagui_verification,base.group_user,1,0,0,0
+access_sagui_verification_admin,sagui.verification.admin,model_sagui_verification,base.group_system,1,1,1,1

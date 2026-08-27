@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Las skills apuntan a los .md VERSIONADOS del addon. El contenido no se copia acá a
+        propósito: el archivo es la fuente de verdad y lo lee tanto Claude Code (en el repo) como
+        Sagui (en runtime). El campo `body` queda vacío y sólo se usa para pisar una skill en
+        caliente sin tocar el addon.
+        noupdate="0": una actualización del módulo re-apunta las rutas si cambian.
+    -->
+
+    <record id="skill_odoo_site_from_design" model="sagui.skill">
+        <field name="name">Odoo site from a design reference</field>
+        <field name="key">odoo-site-from-design</field>
+        <field name="kind">skill</field>
+        <field name="sequence">10</field>
+        <field name="source_path">primate_sagui_designer/skills/odoo-site-from-design/SKILL.md</field>
+    </record>
+
+    <record id="skill_odoo_site_greenfield" model="sagui.skill">
+        <field name="name">Odoo site — greenfield design (art direction first)</field>
+        <field name="key">odoo-site-greenfield-design</field>
+        <field name="kind">skill</field>
+        <field name="sequence">20</field>
+        <field name="source_path">primate_sagui_designer/skills/odoo-site-greenfield-design/SKILL.md</field>
+    </record>
+
+    <record id="skill_odoo_constraints" model="sagui.skill">
+        <field name="name">Odoo — las 8 restricciones de arquitectura</field>
+        <field name="key">odoo-constraints</field>
+        <field name="kind">checklist</field>
+        <field name="sequence">5</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/odoo-constraints.md</field>
+    </record>
+
+    <record id="skill_anti_patterns" model="sagui.skill">
+        <field name="name">Anti-patterns — los tells de diseño generado</field>
+        <field name="key">anti-patterns</field>
+        <field name="kind">reference</field>
+        <field name="sequence">30</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/anti-patterns.md</field>
+    </record>
+
+    <record id="skill_verifier_rubric" model="sagui.skill">
+        <field name="name">Rúbrica del verificador visual</field>
+        <field name="key">verifier-rubric</field>
+        <field name="kind">checklist</field>
+        <field name="sequence">40</field>
+        <field name="source_path">primate_sagui_designer/skills/odoo-site-greenfield-design/references/verifier-rubric.md</field>
+    </record>
+
+</odoo>

@@ -1,4 +1,8 @@
 from . import design_engine
+# Esquema genérico: rol + skills + verificador (lo usan los roles, ej. el diseñador web).
+from . import sagui_skill
+from . import sagui_role
+from . import sagui_verification
 from . import sagui_conversation
 from . import sagui_pending_write
 from . import sagui_assistant

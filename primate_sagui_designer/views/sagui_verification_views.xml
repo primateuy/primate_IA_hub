@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sagui_verification_list" model="ir.ui.view">
+        <field name="name">sagui.verification.list</field>
+        <field name="model">sagui.verification</field>
+        <field name="arch" type="xml">
+            <list string="Verificaciones">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="res_model"/>
+                <field name="loop_no"/>
+                <field name="reviewer_provider"/>
+                <field name="reviewer_model"/>
+                <field name="finding_count"/>
+                <field name="fail_count"/>
+                <field name="verdict" widget="badge"
+                       decoration-success="verdict == 'pass'"
+                       decoration-warning="verdict == 'fail'"
+                       decoration-danger="verdict == 'error'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sagui_verification_form" model="ir.ui.view">
+        <field name="name">sagui.verification.form</field>
+        <field name="model">sagui.verification</field>
+        <field name="arch" type="xml">
+            <form string="Verificación">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Qué se verificó">
+                            <field name="res_model"/>
+                            <field name="res_id"/>
+                            <field name="loop_no"/>
+                            <field name="evidence_labels"/>
+                        </group>
+                        <group string="Revisor">
+                            <field name="reviewer_provider"/>
+                            <field name="reviewer_model"/>
+                            <field name="rubric_skill_id"/>
+                            <field name="verdict"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Hallazgos">
+                            <field name="findings_json" readonly="1"/>
+                            <separator string="Bloques de la rúbrica"/>
+                            <field name="blocks_json" readonly="1"/>
+                            <field name="notes" readonly="1"/>
+                        </page>
+                        <page string="Evidencia">
+                            <field name="evidence_ids" widget="many2many_binary" readonly="1"/>
+                        </page>
+                        <page string="Rúbrica aplicada">
+                            <field name="rubric_text" readonly="1"/>
+                        </page>
+                        <page string="Respuesta cruda">
+                            <field name="raw_response" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sagui_verification" model="ir.actions.act_window">
+        <field name="name">Verificaciones</field>
+        <field name="res_model">sagui.verification</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_sagui_verification" name="Verificaciones" sequence="20"
+              parent="menu_sagui_designer_root" action="action_sagui_verification"/>
+
+</odoo>

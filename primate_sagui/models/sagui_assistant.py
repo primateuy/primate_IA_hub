@@ -565,6 +565,15 @@ class SaguiAssistant(models.AbstractModel):
         return True
 
     @api.model
+    def _build_operations(self):
+        """Operaciones cuyo build corre DIFERIDO en el cron (no en el request del chat).
+
+        Punto de extensión: un módulo que agrega un flujo de construcción suma su operación acá
+        en vez de duplicar el cron.
+        """
+        return ("website", "website_greenfield")
+
+    @api.model
     def _cron_process_pending_builds(self):
         """Construye los sitios confirmados FUERA del request del chat (lo dispara
         _handle_confirmation con cron._trigger()). Cada build en su propia transacción/commit: si
@@ -572,7 +581,7 @@ class SaguiAssistant(models.AbstractModel):
         así un reintento del usuario no vuelve a quemar tokens."""
         Pending = self.env["primate.sagui.pending.write"].sudo()
         pendings = Pending.search([
-            ("operation", "in", ("website", "website_greenfield")),
+            ("operation", "in", list(self._build_operations())),
             ("state", "=", "processing"),
         ], order="create_date", limit=5)
         MAX_ATTEMPTS = 2
