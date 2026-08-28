@@ -539,7 +539,17 @@ class PrimateWebsiteBuilder(models.AbstractModel):
             "</div></div></section></div>"
         ) % {"brand": brand, "lines": lines, "nav": nav_links, "contact": contact_links}
         try:
-            fview.with_context(website_id=website.id).save(value=html, xpath="//div[@id='footer']")
+            fview_w = fview.with_context(website_id=website.id)
+            # RESET ANTES DE ESCRIBIR. Sin esto el guardado se apila sobre el footer de la
+            # generación anterior y el sitio termina mostrando las líneas de dos o tres marcas
+            # distintas juntas (visto: el footer de una clínica con el texto de una herrería y de
+            # un estudio contable). El footer es del WEBSITE, así que cada generación tiene que
+            # dejarlo como si fuera la primera.
+            try:
+                fview_w.reset_arch(mode="hard")
+            except Exception:  # noqa: BLE001 - vista sin arch original que resetear
+                _logger.info("Footer sin arch original para resetear; se sobrescribe igual")
+            fview_w.save(value=html, xpath="//div[@id='footer']")
         except Exception:  # noqa: BLE001 - si falla, el footer queda con el restyle pero contenido demo
             _logger.warning("No se pudo reemplazar el contenido del footer", exc_info=True)
         # Copyright de la marca (reemplaza el 'Company name' demo, que vive en la vista
@@ -565,7 +575,11 @@ class PrimateWebsiteBuilder(models.AbstractModel):
         pats = ("algo con esta letra", "esta letra", "esta fuente", "essa fonte", "esta tipografia",
                 "lorem ipsum", "your logo", "tu logo", "seu logo", "placeholder", "sample text",
                 "texto de ejemplo", "texto exemplo", "fonte:", "fuente:", "font:")
-        return any(p in t for p in pats)
+        if any(p in t for p in pats):
+            return True
+        # Un hueco entre corchetes es el modelo diciendo "acá va un dato que no tengo":
+        # «Tel: [número real]», «[correo real]», «[dirección]». Publicarlo es peor que omitirlo.
+        return bool(re.search(r"\[[^\]]{2,40}\]", t))
 
     @api.model
     def _nav_label(self, it):
