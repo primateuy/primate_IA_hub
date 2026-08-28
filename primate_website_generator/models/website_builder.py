@@ -525,19 +525,21 @@ class PrimateWebsiteBuilder(models.AbstractModel):
             ig = str(contact["instagram"]).lstrip("@")
             cl.append("<li><a href='https://instagram.com/%s' class='text-reset text-decoration-none'>Instagram</a></li>" % escape(ig))
         if not cl:  # el PDF no traía contacto -> link real a la página de contacto (no inventamos datos)
-            cl.append("<li><a href='/contactus' class='text-reset text-decoration-none'>Fale conosco</a></li>")
+            cl.append("<li><a href='/contactus' class='text-reset text-decoration-none'>%s</a></li>"
+                      % escape(_("Contactanos")))
         contact_links = "".join(cl)
 
         html = (
             "<div id='footer' class='oe_structure oe_structure_solo text-break brandfooter'>"
             "<section class='s_text_block pt40 pb24'><div class='container'><div class='row g-4'>"
             "<div class='col-lg-6'><h3 class='mb-2'>%(brand)s</h3>%(lines)s</div>"
-            "<div class='col-lg-3'><h6 class='text-uppercase opacity-75 mb-2'>Menu</h6>"
+            "<div class='col-lg-3'><h6 class='text-uppercase opacity-75 mb-2'>%(t_menu)s</h6>"
             "<ul class='list-unstyled m-0'>%(nav)s</ul></div>"
-            "<div class='col-lg-3'><h6 class='text-uppercase opacity-75 mb-2'>Contato</h6>"
+            "<div class='col-lg-3'><h6 class='text-uppercase opacity-75 mb-2'>%(t_contacto)s</h6>"
             "<ul class='list-unstyled m-0'>%(contact)s</ul></div>"
             "</div></div></section></div>"
-        ) % {"brand": brand, "lines": lines, "nav": nav_links, "contact": contact_links}
+        ) % {"brand": brand, "lines": lines, "nav": nav_links, "contact": contact_links,
+             "t_menu": escape(_("Menú")), "t_contacto": escape(_("Contacto"))}
         try:
             fview_w = fview.with_context(website_id=website.id)
             # RESET ANTES DE ESCRIBIR. Sin esto el guardado se apila sobre el footer de la
