@@ -17,12 +17,23 @@
 # la decide el plan, derivada del sujeto.
 import json
 import logging
+import os
 import re
 import secrets
+import shutil
 
 from odoo import api, models, _
 
 _logger = logging.getLogger(__name__)
+
+# Registros de composición disponibles. La lista vive acá para VALIDAR; el contenido de cada uno
+# vive en skills/_shared/registers/ y se lee en runtime como sagui.skill.
+REGISTERS = ("tech-minimal", "tech-warm", "tech-editorial")
+
+# Sitios de referencia por URL: cuántos se miran y a qué anchos. Dos anchos alcanzan para leer
+# composición; el tercero del verificador no agrega nada acá y cuesta una captura más.
+MAX_REFERENCE_URLS = 3
+REFERENCE_BREAKPOINTS = (1440, 375)
 
 ROLE_KEY = "web_designer"
 WRAPPER = "brandsite"
@@ -41,7 +52,9 @@ _DECL_RE = r"(?P<pre>%s\s*:\s*)(?P<val>[^;}]+)"
 PLAN_SCHEMA = """
 Devolvé EXCLUSIVAMENTE un JSON (sin ``` ni texto alrededor) con esta forma exacta:
 
-{"subject": "<el sujeto concreto, no 'una empresa'>",
+{"register": {"key": "tech-minimal|tech-warm|tech-editorial",
+              "why": "<una línea atada a ESTE sujeto y ESTA audiencia>"},
+ "subject": "<el sujeto concreto, no 'una empresa'>",
  "audience": "<a quién le habla>",
  "job": "<el único trabajo de la página: pedir turno, cotizar, descargar catálogo>",
  "tone": ["<tres palabras de tono>"],
@@ -70,6 +83,10 @@ Devolvé EXCLUSIVAMENTE un JSON (sin ``` ni texto alrededor) con esta forma exac
  "critique": ["<qué cambiaste del primer impulso y por qué, una línea por cambio>"]}
 
 Reglas del plan:
+• "register" es OBLIGATORIO y decide la COMPOSICIÓN: hero, ritmo, densidad, tipo de imagen,
+  presupuesto de movimiento y forma del footer. NO aporta colores, tipografías ni firma — eso
+  sigue saliendo del sujeto. Leé el archivo del registro que elegiste antes de escribir el resto
+  del plan, y que todo lo demás sea consistente con él. Sin registro decidido no se genera nada.
 • La paleta sale del MUNDO DEL SUJETO (sus materiales, su entorno, sus productos), no de un gusto
   general. Los roles son roles: el acento es acento, nunca el fondo de la página.
 • Las dos familias tipográficas tienen que ser DISTINTAS entre sí y elegidas con intención.
@@ -147,6 +164,15 @@ class SaguiDesigner(models.AbstractModel):
                     "name": {"type": "string", "description": "Título del sitio."},
                     "sections": {"type": "array", "items": {"type": "string"},
                         "description": "Si el usuario nombró las secciones, pasalas; mandan."},
+                    "reference_urls": {"type": "array", "items": {"type": "string"},
+                        "description": "Sitios que el usuario nombró como referencia (http/https). "
+                                       "Se capturan y se leen SOLO como composición: paleta, "
+                                       "tipografía y copy de esos sitios NO entran al diseño."},
+                    "register": {"type": "string",
+                        "enum": ["tech-minimal", "tech-warm", "tech-editorial"],
+                        "description": "Registro de composición, si el usuario ya lo eligió al "
+                                       "responder una propuesta anterior. Si se omite, lo decide "
+                                       "el plan según el sujeto."},
                 },
                 "required": ["brief"],
             },
@@ -177,6 +203,78 @@ class SaguiDesigner(models.AbstractModel):
     @api.model
     def _build_operations(self):
         return super()._build_operations() + ("website_designer",)
+
+    # ==================================================================
+    #  Sitios de referencia por URL (cuarto tipo de material)
+    # ==================================================================
+    @api.model
+    def _parse_reference_urls(self, raw):
+        """Normaliza las URLs de referencia. Devuelve (urls, descartadas).
+
+        Solo http/https: cualquier otra cosa -un file://, un javascript:- no es un sitio que
+        haya que mirar y sí es una forma de que el capturador abra algo que no debería.
+        """
+        urls, descartadas = [], []
+        for item in (raw or []):
+            texto = (item or "").strip()
+            if not texto:
+                continue
+            if not re.match(r"^https?://[^\s/$.?#].[^\s]*$", texto, re.I):
+                descartadas.append(texto)
+                continue
+            if texto not in urls:
+                urls.append(texto)
+        return urls[:MAX_REFERENCE_URLS], descartadas
+
+    @api.model
+    def _capture_references(self, env, run, urls):
+        """Captura cada URL a 1440 y 375 y la guarda como evidencia del run.
+
+        La captura NO se usa para reproducir nada: alimenta las observaciones de COMPOSICIÓN del
+        plan. Se guarda igual, porque dentro de seis meses "nos inspiramos en tal sitio" sin la
+        captura no se puede auditar.
+
+        Returns:
+            list: [{"url", "attachment_ids", "error"}] — un fallo de captura NO frena el diseño.
+        """
+        resultados = []
+        for url in urls:
+            partes = url.split("/", 3)
+            base = "/".join(partes[:3])
+            camino = "/" + (partes[3] if len(partes) > 3 else "")
+            shots = env["sagui.verifier.web"]._shoot({
+                "base_url": base, "url": camino, "external": True,
+                "breakpoints": REFERENCE_BREAKPOINTS,
+            })
+            if not shots.get("ok"):
+                _logger.warning("Sagui: no pude capturar la referencia %s (%s)",
+                                url, shots.get("errors"))
+                resultados.append({"url": url, "attachment_ids": [],
+                                   "error": "; ".join(shots.get("errors") or [])})
+                continue
+            # El capturador deja PNG en disco; se leen igual que la evidencia del verificador.
+            slug = re.sub(r"[^a-z0-9]+", "-", base.split("//")[-1].lower()).strip("-")
+            adjuntos = []
+            for shot in shots.get("shots") or []:
+                ruta = shot.get("path")
+                if not ruta or not os.path.exists(ruta):
+                    continue
+                try:
+                    with open(ruta, "rb") as fh:
+                        crudo = fh.read()
+                except OSError:
+                    continue
+                adjuntos.append(env["ir.attachment"].sudo().create({
+                    "name": "referencia-%s-%sw.png" % (slug, shot.get("width")),
+                    "raw": crudo, "mimetype": "image/png",
+                    "res_model": "sagui.design.run", "res_id": run.id,
+                }).id)
+            shutil.rmtree(shots.get("_out_dir") or "", ignore_errors=True)
+            resultados.append({"url": url, "attachment_ids": adjuntos, "error": None})
+        todos = [i for r in resultados for i in r["attachment_ids"]]
+        if todos:
+            run.sudo().write({"reference_capture_ids": [(6, 0, todos)]})
+        return resultados
 
     # ==================================================================
     #  Enrutado
@@ -244,20 +342,64 @@ class SaguiDesigner(models.AbstractModel):
             env, args.get("attachment_ids"), args.get("logo_attachment_id"))
         source = self._route(references, assets, brief)
 
+        urls, urls_descartadas = self._parse_reference_urls(args.get("reference_urls"))
+
         run = env["sagui.design.run"].create({
             "name": (args.get("name") or "").strip() or brief[:60],
             "role_id": role.id, "source": source, "brief": brief,
             "render_mode": (args.get("render_mode") or "fiel"),
             "reference_attachment_ids": [(6, 0, [a.id for a in references])],
             "asset_attachment_ids": [(6, 0, [a.id for a in assets])],
+            "reference_urls": "\n".join(urls),
             "state": "draft",
         })
 
+        # Las capturas se sacan ANTES del plan: son material del plan, no ilustración posterior.
+        capturas = self._capture_references(env, run, urls) if urls else []
+        if capturas:
+            problemas += [_("no pude capturar %s (%s)") % (c["url"], c["error"])
+                          for c in capturas if c.get("error")]
+        problemas += [_("«%s» no es una URL http/https y no se capturó") % u
+                      for u in urls_descartadas]
+
         plan, error = self._make_plan(env, role, run, references, assets, brief,
-                                      source, args.get("sections"))
+                                      source, args.get("sections"),
+                                      capturas=capturas, register=args.get("register"))
         if error:
             run.write({"state": "error"})
             return error
+
+        # SIN REGISTRO NO SE CONSTRUYE, PERO TAMPOCO SE TIRA EL PLAN. Se le muestra al usuario
+        # como propuesta pendiente de UNA decisión suya: la composición es de él, no del modelo
+        # que no la eligió. El run queda guardado y la respuesta dice exactamente qué falta.
+        faltantes = self._plan_is_ready(plan)
+        if faltantes:
+            run.write({
+                "plan_json": json.dumps(plan, ensure_ascii=False),
+                "critique": "\n".join(plan.get("critique") or []),
+                "state": "proposed",
+            })
+            return json.dumps({
+                "propuesta_incompleta": True,
+                "falta_decidir": faltantes,
+                "opciones_registro": [
+                    {"key": "tech-minimal",
+                     "cuando": "software, SaaS, agencias, consultoras, fintech: precisión, "
+                               "una sola acción, el producto real como imagen"},
+                    {"key": "tech-editorial",
+                     "cuando": "marcas con contenido e ideas para publicar: ritmo claro/oscuro, "
+                               "display grande, secciones de contenido en la home"},
+                    {"key": "tech-warm",
+                     "cuando": "servicios con personas en el centro -salud, educación, comercio "
+                               "local, estudios, gastronomía-: tipografía con carácter, imagen propia"},
+                ],
+                "avisos": problemas,
+                "nota": "NO construyas nada. Contale al usuario que el plan está armado pero "
+                        "falta decidir CÓMO SE COMPONE la página, ofrecele las tres opciones en "
+                        "una línea cada una y recomendá la que le cierre a su rubro diciendo por "
+                        "qué. Cuando elija, volvé a llamar disenar_web con el mismo brief y el "
+                        "argumento register.",
+            }, ensure_ascii=False)
 
         run.write({
             "plan_json": json.dumps(plan, ensure_ascii=False),
@@ -279,7 +421,8 @@ class SaguiDesigner(models.AbstractModel):
         }, ensure_ascii=False, default=str)
 
     # ------------------------------------------------------------------ plan (etapas 0-2 / pass 1)
-    def _make_plan(self, env, role, run, references, assets, brief, source, sections):
+    def _make_plan(self, env, role, run, references, assets, brief, source, sections,
+                   capturas=None, register=None):
         """Una llamada al modelo con el rol + skills cargadas. Devuelve (plan, error)."""
         blocks = []
         for att in references[:4]:
@@ -293,6 +436,22 @@ class SaguiDesigner(models.AbstractModel):
                 blocks.append({"type": "text",
                                "text": _("MATERIAL REAL (usalo tal cual, no lo reinventes): %s")
                                        % att.name})
+                blocks.append(block)
+
+        # LA ADVERTENCIA VA PEGADA A CADA IMAGEN, no una vez arriba: es la instrucción que más
+        # fácil se pierde entre bloques, y la que separa "aprendí a componer" de "le copié la
+        # marca a otro".
+        for captura in (capturas or []):
+            for att_id in captura.get("attachment_ids") or []:
+                block = self._attachment_to_block(env["ir.attachment"].browse(att_id))
+                if not block:
+                    continue
+                blocks.append({"type": "text", "text": _(
+                    "SITIO DE REFERENCIA (%s) — MIRÁ SÓLO CÓMO ESTÁ COMPUESTO: tipo de hero, "
+                    "orden y ritmo de secciones, densidad, tipo de imagen, movimiento, forma de "
+                    "nav y footer. SU PALETA, SU TIPOGRAFÍA Y SU COPY NO ENTRAN AL PLAN: esos "
+                    "salen del sujeto. Copiarle el color o la tipografía es el hallazgo C1."
+                ) % captura.get("url")})
                 blocks.append(block)
 
         if source == "reference":
@@ -313,6 +472,17 @@ class SaguiDesigner(models.AbstractModel):
         if sections:
             instruccion += _("\nEl usuario pidió estas secciones y mandan: %s") % ", ".join(sections)
 
+        if (register or "").strip() in REGISTERS:
+            instruccion += _(
+                "\n\nEL REGISTRO YA ESTÁ DECIDIDO POR EL USUARIO: «%s». Usá ese y no otro; "
+                "leelo completo y que todo el plan sea consistente con él."
+            ) % register.strip()
+        if capturas:
+            instruccion += _(
+                "\n\nHay sitios de referencia capturados. Escribí en 'critique' UNA línea con "
+                "las observaciones de composición que sacaste de ellos, y elegí el registro más "
+                "cercano anotando en qué se aparta la referencia. Nada de paleta ni tipografía "
+                "de esos sitios.")
         blocks.append({"type": "text", "text": "%s\n\nBRIEF:\n%s\n\n%s"
                        % (instruccion, brief, PLAN_SCHEMA)})
 
@@ -332,6 +502,11 @@ class SaguiDesigner(models.AbstractModel):
             return None, _("El plan volvió incompleto. Contame un poco más del negocio y "
                            "reintento.")
         plan = self._normalize_plan(plan, sections)
+        # SIN REGISTRO NO SE GENERA. Se corta acá y no en la sección 3: descubrirlo a mitad de
+        # la generación deja medio sitio construido con una composición que nadie eligió.
+        faltantes = self._plan_is_ready(plan)
+        if faltantes:
+            return None, " ".join(faltantes)
         return plan, None
 
     @api.model
@@ -351,7 +526,60 @@ class SaguiDesigner(models.AbstractModel):
                        if (n.get("anchor") or "").lstrip("#") in ids][:6]
         if not plan.get("critique"):
             plan["critique"] = [_("(el plan no trajo autocrítica: revisalo con ojo crítico)")]
+        plan["register"] = self._normalize_register(plan.get("register"))
         return plan
+
+    @api.model
+    def _normalize_register(self, register):
+        """Sanea el registro del plan. Devuelve {"key", "why"} o {} si no vino uno válido.
+
+        NO INVENTA UN DEFAULT. El mapeo por defecto es una decisión del agente atada al sujeto,
+        y elegirlo acá por él convertiría "decidí la composición" en "te puse la de siempre",
+        que es exactamente lo que el registro viene a evitar. Sin registro, _plan_is_ready()
+        frena la generación y lo dice.
+        """
+        register = register if isinstance(register, dict) else {}
+        key = (register.get("key") or "").strip().lower()
+        if key not in REGISTERS:
+            return {}
+        return {"key": key, "why": (register.get("why") or "").strip()}
+
+    @api.model
+    def _plan_is_ready(self, plan):
+        """Qué le falta al plan para poder generar. Lista vacía = listo.
+
+        Hoy solo mira el registro, que es el único campo cuya ausencia frena todo: sin decidir
+        cómo se compone la página, cada sección la compone de nuevo y el sitio sale ensamblado.
+        """
+        faltantes = []
+        if not (plan.get("register") or {}).get("key"):
+            faltantes.append(_(
+                "El plan no decidió el REGISTRO de composición (%s). Elegí uno según el sujeto "
+                "y la audiencia, y justificalo en una línea.") % ", ".join(REGISTERS))
+        return faltantes
+
+    @api.model
+    def _register_notes(self, plan):
+        """Las notas C5/C6 del registro elegido, para la rúbrica del verificador.
+
+        Salen del propio archivo del registro y no de una copia acá: si alguien edita el .md,
+        el verificador chequea lo nuevo sin tocar código.
+        """
+        key = (plan.get("register") or {}).get("key")
+        if not key:
+            return ""
+        texto = self.env["sagui.skill"].content_of("register-%s" % key)
+        if not texto:
+            return ""
+        marcador = "## Verifier notes"
+        if marcador not in texto:
+            return ""
+        cuerpo = texto.split(marcador, 1)[1]
+        # Hasta el próximo encabezado, si lo hubiera.
+        cuerpo = cuerpo.split("\n## ", 1)[0].strip()
+        # La primera línea puede ser un paréntesis aclaratorio del archivo, no una nota.
+        lineas = [ln for ln in cuerpo.splitlines() if ln.strip().startswith("-")]
+        return "\n".join(lineas)
 
     @api.model
     def _tokens_of(self, plan):
@@ -702,6 +930,16 @@ class SaguiDesigner(models.AbstractModel):
             return run.report
 
         context = {"plan": plan, "tokens": self._tokens_of(plan)}
+        # C5/C6 salen del registro elegido y viajan con el plan: la rúbrica dice que se chequean
+        # como el resto del bloque C, y que si no hay registro simplemente no aplican.
+        notas = self._register_notes(plan)
+        if notas:
+            context["register"] = {
+                "key": (plan.get("register") or {}).get("key"),
+                "extra_rubric": _(
+                    "Notas del registro elegido, que se chequean como C5 y C6 del bloque C:\n%s"
+                ) % notas,
+            }
         pendientes, verificaciones = [], []
         result = {}
         for loop_no in range(max_loops):

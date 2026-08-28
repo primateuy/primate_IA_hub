@@ -48,4 +48,45 @@
         <field name="source_path">primate_sagui_designer/skills/odoo-site-greenfield-design/references/verifier-rubric.md</field>
     </record>
 
+    <!--
+        REGISTROS DE COMPOSICIÓN. Un registro dice cómo se COMPONE una página -hero, ritmo,
+        densidad, tipo de imagen, presupuesto de movimiento, forma del footer-, nunca qué colores
+        usa. El README es el que manda el mapeo por defecto y la regla de que un registro no
+        aporta paleta, tipografía ni firma; los tres archivos son los registros disponibles.
+        Se cargan como `reference` porque el agente los CONSULTA al elegir, no los ejecuta paso
+        a paso.
+    -->
+
+    <record id="skill_registers_readme" model="sagui.skill">
+        <field name="name">Registros de composición — cómo se elige y qué NO aporta un registro</field>
+        <field name="key">registers</field>
+        <field name="kind">reference</field>
+        <field name="sequence">31</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/registers/README.md</field>
+    </record>
+
+    <record id="skill_register_tech_minimal" model="sagui.skill">
+        <field name="name">Registro tech-minimal — precisión, una acción, blanco</field>
+        <field name="key">register-tech-minimal</field>
+        <field name="kind">reference</field>
+        <field name="sequence">32</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/registers/tech-minimal.md</field>
+    </record>
+
+    <record id="skill_register_tech_warm" model="sagui.skill">
+        <field name="name">Registro tech-warm — humano y directo, imagen propia</field>
+        <field name="key">register-tech-warm</field>
+        <field name="kind">reference</field>
+        <field name="sequence">33</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/registers/tech-warm.md</field>
+    </record>
+
+    <record id="skill_register_tech_editorial" model="sagui.skill">
+        <field name="name">Registro tech-editorial — ritmo claro/oscuro, display grande, contenido</field>
+        <field name="key">register-tech-editorial</field>
+        <field name="kind">reference</field>
+        <field name="sequence">34</field>
+        <field name="source_path">primate_sagui_designer/skills/_shared/registers/tech-editorial.md</field>
+    </record>
+
 </odoo>

@@ -40,6 +40,7 @@ Entregás un sitio fuerte, funcional y coherente, con copy real y estructura cor
             ref('skill_odoo_site_from_design'),
             ref('skill_odoo_site_greenfield'),
             ref('skill_anti_patterns'),
+            ref('skill_registers_readme'),
             ref('skill_verifier_rubric'),
         ])]"/>
 

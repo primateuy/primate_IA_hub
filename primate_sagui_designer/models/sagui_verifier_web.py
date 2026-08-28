@@ -25,6 +25,10 @@ from odoo.tools import file_path
 
 _logger = logging.getLogger(__name__)
 
+# Cuánto puede moverse una costura entre secciones sin que sea un quiebre de ritmo. Un rem
+# redondeado a px no es un error de diseño.
+SPACING_TOLERANCE_PX = 2
+
 SHOOT_TIMEOUT = 300
 DEFAULT_BREAKPOINTS = (375, 768, 1440)
 
@@ -52,7 +56,8 @@ class SaguiVerifierWeb(models.AbstractModel):
                     "dom_findings": [], "evidence_ids": []}
 
         evidence = self._attach(shots, target)
-        dom_findings = self._dom_findings(shots)
+        dom_findings = self._dom_findings(
+            shots, register=((context or {}).get("register") or {}).get("key"))
 
         result = self.env["sagui.verification"].run(
             target=target,
@@ -139,6 +144,10 @@ class SaguiVerifierWeb(models.AbstractModel):
         # credenciales la verificación sigue: D4 se resuelve igual por DOM, y se dice.
         login = icp.get_param("primate_sagui.shot_login") or ""
         password = icp.get_param("primate_sagui.shot_password") or ""
+        # Un sitio AJENO no se loguea: nuestras credenciales no son suyas, y el intento sólo
+        # gasta tiempo y deja un login fallido en el log de otro.
+        if target.get("external"):
+            login = password = ""
         if login and password:
             cmd += ["--login", login, "--password", password]
 
@@ -191,11 +200,14 @@ class SaguiVerifierWeb(models.AbstractModel):
     #  Hallazgos determinísticos desde las sondas de DOM
     # ==================================================================
     @api.model
-    def _dom_findings(self, shots):
+    def _dom_findings(self, shots, register=None):
         """Ítems de la rúbrica que se verifican mirando el DOM, no la captura.
 
         Cada hallazgo lleva source='dom' y method='DOM' para que el reporte al humano pueda
         decirlo explícitamente en vez de dar a entender que se vio en una imagen.
+
+        :param register: clave del registro elegido, si el plan fijó uno. Hay ítems que sólo
+            aplican a un registro: el C6 de tech-minimal es el espaciado uniforme.
         """
         findings = []
         by_label = {s.get("label"): (s.get("probes") or {}) for s in shots.get("shots") or []}
@@ -271,4 +283,74 @@ class SaguiVerifierWeb(models.AbstractModel):
                     _("Encontrar el bloque que se pasa de ancho y acotarlo con max-width:100%."),
                     breakpoint_=width, fix_kind="regen")
 
+        # --- C6 de tech-minimal: el espaciado entre secciones top-level tiene que usar SIEMPRE
+        #     el mismo paso de la escala. Es determinístico y se mide, así que no se le gasta
+        #     una llamada al revisor — y sobre todo, se dice CUÁL sección rompe, que es lo que
+        #     un "el espaciado es irregular" nunca dice.
+        if register == "tech-minimal":
+            findings.extend(self._spacing_findings(anon or {}))
+
         return findings
+
+    @api.model
+    def _spacing_findings(self, probes):
+        """Costuras entre secciones que no usan el mismo paso de espaciado.
+
+        Se compara contra la costura MÁS FRECUENTE, no contra un valor fijo: la escala la
+        eligió el plan y puede ser cualquiera. Lo que el registro exige es que sea una sola.
+
+        Args:
+            probes: sondas de una captura (la anónima, que es la que ve el visitante).
+
+        Returns:
+            list: hallazgos C6, uno por costura fuera del paso dominante.
+        """
+        gaps = probes.get("section_gaps") or []
+        if len(gaps) < 3:
+            # Con dos costuras no hay "paso dominante" que valga: cualquiera de las dos podría
+            # ser la buena, y llamar rota a una sería tirar una moneda.
+            return []
+        seams = [int(g.get("seam") or 0) for g in gaps]
+        # LA FRECUENCIA SE CUENTA CON LA MISMA TOLERANCIA QUE DESPUÉS SE PERDONA. Contando
+        # valores exactos, 192/193/191 —el mismo paso con el redondeo de un rem— parecen tres
+        # pasos distintos, y el chequeo reportaría "no hay ritmo" en una página impecable.
+        frecuencias = {v: sum(1 for o in seams if abs(o - v) <= SPACING_TOLERANCE_PX)
+                       for v in seams}
+        dominante = max(frecuencias, key=lambda v: (frecuencias[v], -abs(v)))
+        # SI NINGÚN VALOR SE REPITE, NO HAY PASO DEL QUE APARTARSE. Elegir uno igual —el más
+        # chico, el primero— y llamar rotas a las demás es tirar una moneda y después
+        # justificarla. Se dice lo que realmente pasa: no hay ritmo, y ahí están los números.
+        if frecuencias[dominante] < 2:
+            return [{
+                "severity": "WARN", "rubric": "C6", "section": "layout", "breakpoint": None,
+                "seen": _(
+                    "Ninguna costura entre secciones se repite (%s px): el registro "
+                    "tech-minimal pide un solo paso de escala y acá no hay ninguno."
+                ) % ", ".join(str(v) for v in seams),
+                "fix": _(
+                    "Definí el paso una sola vez en `.brandsite .sec` y sacá el padding "
+                    "vertical propio de todas las secciones."),
+                "fix_kind": "regen", "token": None, "source": "dom", "method": "DOM",
+            }]
+        fuera = [g for g in gaps
+                 if abs(int(g.get("seam") or 0) - dominante) > SPACING_TOLERANCE_PX]
+        if not fuera:
+            return []
+        hallazgos = []
+        for g in fuera[:6]:
+            destino = g.get("to") or g.get("from") or "?"
+            hallazgos.append({
+                "severity": "WARN", "rubric": "C6", "section": destino, "breakpoint": None,
+                "seen": _(
+                    "La costura entre «%(de)s» y «%(a)s» deja %(valor)spx de aire y el resto "
+                    "de la página usa %(paso)spx. El registro tech-minimal pide un solo paso "
+                    "de escala entre secciones top-level."
+                ) % {"de": g.get("from") or "?", "a": g.get("to") or "?",
+                     "valor": int(g.get("seam") or 0), "paso": dominante},
+                "fix": _(
+                    "Sacá el padding vertical propio de la sección «%s» y dejá que lo ponga "
+                    "`.brandsite .sec`, que es el único lugar donde vive el paso."
+                ) % destino,
+                "fix_kind": "regen", "token": None, "source": "dom", "method": "DOM",
+            })
+        return hallazgos

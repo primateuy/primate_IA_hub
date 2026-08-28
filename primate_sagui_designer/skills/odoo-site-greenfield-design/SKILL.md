@@ -47,16 +47,41 @@ If the brief is vague, decide these yourself and state them; do not ask unless t
 - **Audience** and **the page's single job** (book a visit, request a quote, download a catalog).
 - **Available real material:** logo, photos, colors already in use, existing copy. Real material
   always beats invented material.
+- **Reference sites given as URLs**, if any — see below. A URL is *not* a design to reproduce.
 - **Tone words (3):** e.g. *sobrio, técnico, cercano*.
 
 The subject's own world — its materials, tools, vocabulary, colors of its physical environment —
 is where distinctive choices come from. A vineyard, a dental clinic and a logistics firm must not
 share a palette.
 
+### When the brief names a reference URL
+
+A URL is the **fourth kind of material**, next to *PDF/mockup*, *partial (logo, colors)* and
+*nothing*. It does **not** route to `odoo-site-from-design`: there is no design to reproduce
+here, only a way of composing to learn from.
+
+1. Capture it live with `tools/shoot.py` at **1440 and 375**, the same tool as everywhere else.
+2. From the capture read **only these six things**, and write them into the plan as observations:
+   hero kind · section order and rhythm · density · image kind · motion budget · nav/footer shape.
+3. Pick the closest register file and **note the deviations** — where the reference does something
+   its register does not.
+4. Save the captures in the `sagui.design.run` as evidence, like any other reference.
+
+**What must never cross from a reference URL into the plan: palette, typefaces and copy.**
+Reading a hex value off a screenshot is the most tempting thing in this whole skill and the one
+that produces a site that belongs to somebody else. If a generated site carries a reference's
+color, font or wording, that is a **C1 finding** and the page is not "listo".
+
+The point of capturing a reference is to answer *"how is this page put together?"* — never
+*"what does it look like?"*
+
 ## Stage 1 — Design plan (text only; NO HTML/CSS yet)
 Produce this compact plan. Every later decision derives from it.
 
 ```
+REGISTER     <key> — how the page is COMPOSED, chosen from `_shared/registers/`:
+             tech-minimal | tech-warm | tech-editorial
+             + ONE line of justification tied to THIS subject and audience
 CONCEPT      one sentence: what this page feels like and why that fits the subject
 PALETTE      4–6 named hex values WITH ROLES:
              bg (page) / surface / text / text-muted / accent / accent-contrast
@@ -75,6 +100,26 @@ MOTION       where motion serves (one orchestrated moment beats scattered effect
 COPY VOICE   register, verbs, what the CTA literally says
 ```
 
+**REGISTER is not optional and it is not a mood.** A register fixes the *composition* — hero
+kind, section rhythm, density, image kind, motion budget, nav/footer shape — and supplies
+**no colors, no typefaces and no signature**; those still come from the subject. Read the chosen
+file in full before writing the rest of the plan: every field below has to be consistent with it.
+
+Default mapping when the brief only says "profesional / moderno / pro":
+
+| Subject | Register |
+|---|---|
+| software, SaaS, agencies, consulting, fintech — anything selling a digital product | `tech-minimal` |
+| …but with real content and ideas to publish (research, cases, docs, a blog that matters) | `tech-editorial` |
+| services with people at the center: health, education, local business, studios, food | `tech-warm` |
+
+You may depart from the default — the subject knows better than the table — but **say so in the
+plan**, in the same justification line. "Modern and professional" is not a register: it is the
+request that makes you choose one.
+
+**If the register is not decided, nothing gets generated.** A plan without `REGISTER` is
+incomplete and Stage 3 does not start.
+
 Guidance for the plan:
 - **Type carries the personality.** Pair display and body deliberately; do not use the same
   pairing you would reach for on any other project. Set numbers, not adjectives.
@@ -92,6 +137,12 @@ Ask, per item of the plan: *"Would I have produced this for any similar brief?"*
 Run a mental control: imagine the same prompt for a competitor in the same rubro and see if you
 land on the same palette/hero/layout. Anything that matches the generic answer gets revised.
 Write down what you changed and why (one line each). Only then proceed.
+
+Then check the plan **against its own register**: does the hero, the rhythm, the density and the
+footer actually match the file you chose, or did you write a `tech-editorial` header on top of a
+three-card `tech-minimal` page? A register executed halfway reads worse than no register — and
+each file ends with a *"What ruins this register"* section that is precisely the list of ways to
+get it wrong.
 
 **Vetoed defaults** (allowed only if the brief explicitly asks for them):
 - warm cream bg (~#F4F1EA) + high-contrast serif display + terracotta/clay accent (~#D97757)
@@ -141,6 +192,9 @@ tokens. Say so; do not oversell.
 
 ## Deliverable checklist (all must be true before "listo")
 - [ ] Stage 0–2 written and included in the proposal (subject, plan, critique changes)
+- [ ] `REGISTER` decided and justified in one line; the built page matches that register
+- [ ] If a reference URL was given: captures saved as evidence, composition observations in the
+      plan, and **no palette / typeface / copy** carried over from it
 - [ ] Palette roles explicit; `o_cc` mapped; contrast ≥ 4.5:1 verified per section
 - [ ] Display + body faces loaded; explicit `--fs-*` scale applied everywhere
 - [ ] Sections follow the plan's rhythm; a single clear signature element

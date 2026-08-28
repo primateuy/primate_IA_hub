@@ -78,6 +78,33 @@ PROBE_JS = r"""
     in_website_layout: !!(header && footer),
     section_ids: Array.from(document.querySelectorAll('main section[id], #wrap section[id]'))
                       .map((s) => s.id).slice(0, 30),
+    // C6 de tech-minimal — el paso de espaciado entre secciones top-level. Se MIDE, no se
+    // deduce del CSS: lo que importa es la costura que se ve, y ahí entran los márgenes
+    // colapsados, un padding pisado con más especificidad o una sección que trae el suyo.
+    // Se reporta el hueco real entre el final de una sección y el principio de la siguiente.
+    section_gaps: (() => {
+      const secs = Array.from(
+        document.querySelectorAll('.brandsite .sec, main > section[id], #wrap > section[id]')
+      ).filter((el) => el.getBoundingClientRect().height > 0);
+      const out = [];
+      for (let i = 1; i < secs.length; i += 1) {
+        const prev = secs[i - 1].getBoundingClientRect();
+        const cur = secs[i].getBoundingClientRect();
+        const prevCs = getComputedStyle(secs[i - 1]);
+        const curCs = getComputedStyle(secs[i]);
+        out.push({
+          from: secs[i - 1].id || '', to: secs[i].id || '',
+          // Hueco entre bloques (0 si están pegados, que es lo normal con padding interno).
+          gap: Math.round(cur.top - prev.bottom),
+          // Y el aire real que separa el contenido: el padding de abajo de una más el de
+          // arriba de la siguiente. Dos secciones pegadas con paddings distintos rompen el
+          // ritmo aunque el gap sea 0 en las dos costuras.
+          seam: Math.round(parseFloat(prevCs.paddingBottom || '0')
+                           + parseFloat(curCs.paddingTop || '0')),
+        });
+      }
+      return out.slice(0, 20);
+    })(),
   };
 }
 """

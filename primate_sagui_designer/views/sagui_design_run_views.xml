@@ -93,6 +93,16 @@
                             <field name="reference_attachment_ids" widget="many2many_binary"/>
                             <separator string="Assets (logo, fotos)"/>
                             <field name="asset_attachment_ids" widget="many2many_binary"/>
+                            <separator string="Sitios de referencia (URL)"/>
+                            <div class="text-muted mb-2">
+                                De estas capturas se lee SÓLO la composición: hero, ritmo,
+                                densidad, tipo de imagen, movimiento y forma de nav/footer.
+                                La paleta, la tipografía y el copy del sitio de referencia
+                                no entran al diseño.
+                            </div>
+                            <field name="reference_urls" placeholder="Una URL por línea"/>
+                            <field name="reference_capture_ids" widget="many2many_binary"
+                                   readonly="1"/>
                         </page>
                     </notebook>
                 </sheet>

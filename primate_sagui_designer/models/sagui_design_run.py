@@ -44,6 +44,26 @@ class SaguiDesignRun(models.Model):
         string="Assets (logo, fotos)")
     documents_folder = fields.Char(string="Carpeta de Documentos")
 
+    # --- sitios de referencia por URL (cuarto tipo de material) ---
+    # NO SON REFERENCIAS A REPRODUCIR. De su captura sale sólo COMPOSICIÓN -hero, ritmo,
+    # densidad, tipo de imagen, movimiento, forma de nav/footer-; paleta, tipografía y copy no
+    # cruzan nunca. Por eso viven en su propio campo y no en reference_attachment_ids, que es lo
+    # que el flujo "con referencia" reproduce.
+    reference_urls = fields.Text(
+        string="Sitios de referencia (URLs)",
+        help="Una por línea. Se capturan a 1440 y 375 y se leen SOLO como composición.")
+    reference_capture_ids = fields.Many2many(
+        "ir.attachment", "sagui_design_run_urlshot_rel", "run_id", "attachment_id",
+        string="Capturas de referencia",
+        help="Evidencia de qué se miró: quedan guardadas con el run.")
+    reference_capture_count = fields.Integer(
+        string="Capturas", compute="_compute_reference_capture_count")
+
+    @api.depends("reference_capture_ids")
+    def _compute_reference_capture_count(self):
+        for rec in self:
+            rec.reference_capture_count = len(rec.reference_capture_ids)
+
     # --- el plan y su autocrítica (etapas 0 a 2 de la skill) ---
     plan_json = fields.Text(string="Plan de diseño (JSON)")
     critique = fields.Text(string="Autocrítica del plan")

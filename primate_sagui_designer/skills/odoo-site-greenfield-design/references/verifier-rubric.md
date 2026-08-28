@@ -34,6 +34,12 @@ the concrete element that makes it so.
 - C3 Would a competitor's site in the same rubro look the same? Name what makes it interchangeable.
 - C4 Copy: filler phrases ("Bienvenidos", "soluciones integrales", "comprometidos con la
   excelencia"), vague CTAs ("Enviar", "Más info").
+- C1b If the plan cites a **reference URL**: does the page carry that reference's palette,
+  typeface or wording? Composition may be borrowed; identity may not.
+- **C5 / C6 — from the register.** When the plan states `REGISTER: <key>`, the two "Verifier
+  notes" of that register file are appended here as C5 and C6, and are checked like the rest of
+  block C. They are given to you with the plan; if the plan has no register, C5/C6 do not apply
+  and their absence is not a finding.
 
 ## D. Odoo function (from screenshots and, if given, the DOM)
 - D1 Header shows the design's nav items, not Home/Contact Us demo; readable on its bar.
@@ -43,3 +49,7 @@ the concrete element that makes it so.
 
 Score each block A–D as pass/fail. The site is "listo" only when A, B and D pass and C has no
 FAIL (WARN in C is reported to the human as art-direction notes).
+
+**A reviewer infrastructure failure is not a failed design.** If a capture is missing, a
+breakpoint did not render or the register file did not reach you, say so as an infra note and
+score what you could actually see — never turn "I could not check it" into a FAIL.
