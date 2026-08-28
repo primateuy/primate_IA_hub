@@ -269,8 +269,20 @@ class SaguiVerifierWeb(models.AbstractModel):
             demo_nav = anon.get("nav_demo_tells") or []
             if demo_nav:
                 add("D1", "header",
-                    _("El header todavía muestra ítems de la demo de Odoo: %s") % ", ".join(demo_nav),
+                    _("La nav del diseño todavía tiene ítems de la demo de Odoo: %s")
+                    % ", ".join(demo_nav),
                     _("Reemplazar los website.menu por los del diseño."))
+            # Un CTA demo en el header NO es la nav: los menús pueden estar perfectos y sobrar
+            # igual un botón del template. Se reporta aparte y como WARN, con el arreglo que
+            # corresponde, para no mandar a nadie a tocar los menús por algo que no está ahí.
+            demo_cta = anon.get("header_demo_cta") or []
+            if demo_cta:
+                add("D1", "header (botones)",
+                    _("El header trae botones que no son del diseño: %s. Los menús de la nav "
+                      "están bien; esto es el CTA/utilidades del template.") % ", ".join(demo_cta),
+                    _("Desactivar el CTA del header en las opciones del sitio, o reemplazar su "
+                      "texto y destino por los del diseño."),
+                    severity="WARN")
             demo_footer = anon.get("footer_demo_tells") or []
             if demo_footer:
                 add("D2", "footer",

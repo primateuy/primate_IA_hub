@@ -36,9 +36,19 @@ PROBE_JS = r"""
   const header = document.querySelector('header') || document.querySelector('#top');
   const footer = document.querySelector('footer') || document.querySelector('#bottom');
   const navEl = document.querySelector('.o_frontend_to_backend_nav');
-  const navLinks = Array.from(
-    (header || document).querySelectorAll('#top_menu a, .navbar-nav a, header nav a')
-  ).map((a) => (a.textContent || '').trim()).filter((t) => t.length);
+  // LA NAV DEL DISEÑO Y LOS BOTONES DEL HEADER NO SON LO MISMO. `#top_menu` son los
+  // website.menu; el resto del header trae utilidades de Odoo (Sign in, selector de idioma, el
+  // CTA configurable). Mezclarlos hacía que el verificador reportara "el header muestra ítems
+  // demo" y recomendara reemplazar los menús, cuando los menús ya estaban bien: el sobrante era
+  // un botón del template. Se miden por separado.
+  const navEls = (header || document).querySelectorAll('#top_menu > li > a, #top_menu a');
+  const navLinks = Array.from(navEls)
+    .map((a) => (a.textContent || '').trim()).filter((t) => t.length);
+  const navHrefs = new Set(Array.from(navEls).map((a) => a.getAttribute('href') || ''));
+  const headerExtras = Array.from((header || document).querySelectorAll('a, button'))
+    .filter((el) => !navHrefs.has(el.getAttribute('href') || '__none__'))
+    .map((el) => (el.textContent || '').trim())
+    .filter((t) => t.length && t.length < 40);
   const logo = document.querySelector('header img, #top img, .navbar-brand img');
   const footerText = txt(footer);
   const demoTells = [
@@ -61,8 +71,12 @@ PROBE_JS = r"""
     // D1 — el header trae la nav del diseño, no la demo.
     has_header: !!header,
     nav_items: navLinks.slice(0, 20),
-    nav_demo_tells: navLinks.filter((t) => ['Home', 'Contact Us', 'Shop', 'Inicio y contacto']
-                                            .includes(t)),
+    nav_demo_tells: navLinks.filter((t) => ['Home', 'Contact Us', 'Shop', 'Blog', 'Courses',
+                                            'Jobs', 'Appointment'].includes(t)),
+    // Botones del header que NO son la nav: útil para avisar de un CTA demo sin acusar a la nav.
+    header_extras: headerExtras.slice(0, 12),
+    header_demo_cta: headerExtras.filter((t) => ['Contact Us', 'Contact us', 'Get a quote',
+                                                 'Sign in'].includes(t)),
     // D2 — footer propio, sin restos de la demo de Odoo.
     has_footer: !!footer,
     footer_demo_tells: demoTells,

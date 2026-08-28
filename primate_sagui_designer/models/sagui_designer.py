@@ -782,7 +782,29 @@ class SaguiDesigner(models.AbstractModel):
         if not htmls:
             return None, None
         css = self._base_css(plan) + "\n" + self._defuse_js_reveals("\n".join(csss))
-        return "\n".join(htmls), css
+        return self._strip_unknown_images("\n".join(htmls), imagenes), css
+
+    @api.model
+    def _strip_unknown_images(self, html, permitidas):
+        """Saca los <img> cuyo src no sea una imagen REAL que le pasamos.
+
+        El prompt ya dice que use sólo las URLs provistas, pero ante un hueco de layout el
+        generador inventa una ruta plausible (`/web/image/website/foto.jpg`) y Odoo responde con
+        su placeholder de cámara: un stock placeholder, que la rúbrica veta en B4. Es más barato
+        borrarlo que pedirle otra vuelta al modelo.
+        """
+        permitidas = set(permitidas or [])
+
+        def decidir(match):
+            tag = match.group(0)
+            src = re.search(r"""src\s*=\s*["']([^"']+)["']""", tag)
+            url = (src.group(1) if src else "").strip()
+            if url and (url in permitidas or url.startswith("data:")):
+                return tag
+            _logger.info("Sagui designer: saqué un <img> con src inventado (%s)", url or "sin src")
+            return ""
+
+        return re.sub(r"<img\b[^>]*/?>", decidir, html, flags=re.I)
 
     @api.model
     def _defuse_js_reveals(self, css):
@@ -835,6 +857,24 @@ class SaguiDesigner(models.AbstractModel):
             _logger.info("Sagui designer: neutralicé un reveal dependiente de JS en «%s»", sel)
             css = css[:inicio] + css[fin:]
         return css
+
+    @api.model
+    def _parse_section(self, text):
+        """Separa la salida del generador en HTML y CSS.
+
+        El contrato es `===HTML=== … ===CSS=== …`; si el modelo se olvida del separador, todo lo
+        devuelto se toma como HTML antes que descartar la sección entera.
+        """
+        html = css = ""
+        if "===HTML===" in text:
+            rest = text.split("===HTML===", 1)[1]
+            if "===CSS===" in rest:
+                html, css = rest.split("===CSS===", 1)
+            else:
+                html = rest
+        else:
+            html = text
+        return html.strip().strip("`"), css.strip().strip("`")
 
     # ------------------------------------------------------------------ tokens y base CSS
     @api.model
