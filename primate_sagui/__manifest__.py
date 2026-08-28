@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Primate Sagui',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Productivity/AI',
     'summary': 'Claude conversacional dentro de Odoo: chateá con Sagui para consultar y analizar datos',
     'author': 'PrimateUY',

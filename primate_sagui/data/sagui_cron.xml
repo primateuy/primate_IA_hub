@@ -2,17 +2,21 @@
 <odoo noupdate="1">
   <!-- Construcción de sitios en BACKGROUND. La confirmación en el chat marca el pending como
        'processing' y dispara este cron con _trigger() (corre enseguida, en su propia transacción),
-       así el message_post de Discuss no se bloquea con la llamada larga al LLM. El intervalo grande
-       es sólo un fallback: el disparo real es on-demand. v19: sin numbercall/doall (deprecados). -->
+       así el message_post de Discuss no se bloquea con la llamada larga al LLM. El disparo real es
+       on-demand, PERO el intervalo no puede ser enorme: si un build se muere por timeout, su
+       transacción hace rollback y el pending queda en 'processing' sin que nadie lo mire. Con un
+       intervalo de un día eso era un silencio de un día para el usuario, que es como se ve un
+       "nunca me avisó". Cada 10 minutos la barrida es barata -sólo busca pendings en 'processing'-
+       y garantiza que el usuario reciba una respuesta. v19: sin numbercall/doall (deprecados). -->
   <record id="cron_build_sites" model="ir.cron">
     <field name="name">Sagui: construir sitios confirmados (async)</field>
     <field name="model_id" ref="model_primate_sagui_assistant"/>
     <field name="state">code</field>
     <field name="code">model._cron_process_pending_builds()</field>
-    <field name="interval_number">1</field>
-    <field name="interval_type">days</field>
+    <field name="interval_number">10</field>
+    <field name="interval_type">minutes</field>
     <field name="active" eval="True"/>
-    <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    <field name="nextcall" eval="(DateTime.now() + relativedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')"/>
   </record>
 
   <!-- AUTOMATIZACIONES (FASE 1, read-only): corre cada 30 min y dispara las vencidas

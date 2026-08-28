@@ -549,7 +549,13 @@ class SaguiAssistant(models.AbstractModel):
         # vez. La diferimos a un cron: corre en su propia transacción, commitea solo (idempotente) y
         # postea el resultado cuando termina. El resto de operaciones (create/write/import) son
         # rápidas y siguen inline.
-        if pending.operation in ("website", "website_greenfield"):
+        # LA LISTA SALE DEL PUNTO DE EXTENSIÓN, NO DE UNA TUPLA ESCRITA ACÁ. Estaba hardcodeada
+        # y el cron sí usaba _build_operations(), así que una operación agregada por otro módulo
+        # -website_designer- quedaba en tierra de nadie: no entraba al cron y se ejecutaba INLINE
+        # dentro del message_post. De ahí los dos síntomas que reportó el usuario: la demora
+        # enorme al confirmar, y que no avisara NI al terminar NI al fallar (si el worker mata el
+        # request por timeout, la transacción hace rollback y no corre ninguno de los dos avisos).
+        if pending.operation in self._build_operations():
             pending.write({"state": "processing"})
             self._post_bot_reply(channel, _(
                 "¡Dale! Estoy construyendo el sitio (%s). Tarda un par de minutos (2-3) porque lo "
@@ -601,6 +607,18 @@ class SaguiAssistant(models.AbstractModel):
                     "Reintentá con menos secciones o un brief más corto, o avisame.") % pending.token)
                 self.env.cr.commit()
                 continue
+            # UN INTENTO PREVIO QUE NO TERMINÓ ES UN BUILD QUE SE MURIÓ CALLADO. Si llegó acá
+            # con intentos ya contados, el anterior se cortó por timeout: su transacción hizo
+            # rollback y no corrió ninguno de los dos avisos. El usuario quedó esperando sin
+            # saber nada, que es exactamente lo que no puede pasar. Se lo decimos ANTES de
+            # reintentar, porque el reintento tarda otro tanto.
+            if pending.build_attempts:
+                self._post_bot_reply(channel, _(
+                    "⚠️ El intento anterior de construir el sitio (%s) se cortó antes de "
+                    "terminar —normalmente por tardar demasiado—. Lo reintento una vez más y "
+                    "te aviso acá cómo sale."
+                ) % pending.token)
+                self.env.cr.commit()
             # Incrementar intentos y COMMIT ANTES de construir: si un kill por timeout aborta el
             # build, el contador queda persistido (no se pierde en el rollback) y no se reintenta sin fin.
             pending.write({"build_attempts": pending.build_attempts + 1})
