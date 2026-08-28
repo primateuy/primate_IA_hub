@@ -317,10 +317,16 @@ class SaguiDocuments(models.AbstractModel):
             return None
         if not raw:
             return None
+        # Un asset que se va a MOSTRAR en un sitio público tiene que ser legible por un
+        # visitante anónimo. Si no, Odoo le sirve su placeholder de cámara y el sitio queda con
+        # una foto rota que además dispara el veto B4 de la rúbrica. La REFERENCIA no: es
+        # material de entrada para el modelo, nunca se publica, y se queda privada.
+        publico = rol != "referencia"
         return env["ir.attachment"].create({
             "name": doc.name or origen.name,
             "raw": raw,
             "mimetype": doc.mimetype or origen.mimetype,
+            "public": publico,
             "description": _("Referencia de diseño (%(rol)s) tomada de Documentos: %(ruta)s")
                            % {"rol": rol, "ruta": self._folder_path(doc.folder_id)},
         })

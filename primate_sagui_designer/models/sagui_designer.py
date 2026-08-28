@@ -384,6 +384,7 @@ class SaguiDesigner(models.AbstractModel):
             "render_mode": (args.get("render_mode") or "fiel"),
             "reference_attachment_ids": [(6, 0, [a.id for a in references])],
             "asset_attachment_ids": [(6, 0, [a.id for a in assets])],
+            "logo_attachment_id": int(args.get("logo_attachment_id") or 0) or False,
             "reference_urls": "\n".join(urls),
             "state": "draft",
         })
@@ -517,8 +518,22 @@ class SaguiDesigner(models.AbstractModel):
                 "las observaciones de composición que sacaste de ellos, y elegí el registro más "
                 "cercano anotando en qué se aparta la referencia. Nada de paleta ni tipografía "
                 "de esos sitios.")
-        blocks.append({"type": "text", "text": "%s\n\nBRIEF:\n%s\n\n%s"
-                       % (instruccion, brief, PLAN_SCHEMA)})
+        # MATERIAL DISPONIBLE, dicho en la etapa del PLAN. Si el plan pide "foto del equipo" y no
+        # hay ninguna, la sección nace condenada: o queda un hueco, o el generador mete el logo,
+        # o inventa una ruta. Se decide con la verdad a la vista.
+        fotos = [a for a in assets if (a.mimetype or "").startswith("image/")
+                 and a.id != int(args_logo or 0)]
+        if fotos:
+            material = _("Fotos reales disponibles: %s. Podés planificar secciones con imagen.") \
+                % ", ".join(a.name or str(a.id) for a in fotos)
+        else:
+            material = _(
+                "NO hay ninguna foto disponible, y no se van a conseguir. NO planifiques secciones "
+                "que dependan de una imagen (ni hero con foto, ni galería, ni retrato del equipo): "
+                "resolvé con tipografía, color, composición y espacio. Inventar imágenes o dejar "
+                "huecos cuenta como falla.")
+        blocks.append({"type": "text", "text": "%s\n\nBRIEF:\n%s\n\nMATERIAL REAL: %s\n\n%s"
+                       % (instruccion, brief, material, PLAN_SCHEMA)})
 
         action = env["primate.ai.action"]._open(
             "disenar_web_plan", run.name, ref="sagui.design.run,%s" % run.id)
@@ -746,13 +761,16 @@ class SaguiDesigner(models.AbstractModel):
                                 "motion", "copy_voice", "tone")}, ensure_ascii=False)
         # Imágenes REALES disponibles. Si la lista va vacía se dice explícitamente, porque el
         # modelo, ante la duda, inventa un src y deja una imagen rota.
+        logo_id = run.logo_attachment_id.id
         imagenes = ["/web/image/%s" % a.id for a in run.asset_attachment_ids
-                    if (a.mimetype or "").startswith("image/")]
+                    if (a.mimetype or "").startswith("image/") and a.id != logo_id]
         imagenes_txt = ("Imágenes reales disponibles (usá SOLO estas URLs): %s" % ", ".join(imagenes)
                         if imagenes else
-                        "NO hay ninguna imagen disponible: no pongas <img>, resolvé con tipografía, "
-                        "color y espacio.")
-        htmls, csss = [], []
+                        "NO hay NINGUNA foto disponible. No pongas <img> ni inventes una ruta: una "
+                        "sección que pedía foto se resuelve con tipografía, color y espacio, que es "
+                        "una decisión de diseño legítima. El logo de la marca ya está en el header "
+                        "del sitio: no lo uses como si fuera una foto de contenido.")
+        htmls, csss, caidas = [], [], []
         for sec in plan.get("sections") or []:
             prompt = _(
                 "PLAN (ya decidido, no lo cambies):\n%(plan)s\n\n"
@@ -771,7 +789,10 @@ class SaguiDesigner(models.AbstractModel):
                     system=role.prompt(extra=SECTION_PROMPT) if role else SECTION_PROMPT,
                     max_tokens=MAX_SECTION_TOKENS, timeout=240)
             except Exception as e:  # noqa: BLE001
+                # Una sección que se cae NO puede desaparecer sin que nadie se entere: el sitio
+                # sale sin ella, el plan dice que estaba, y el humano lo descubre mirando.
                 _logger.warning("Sagui designer: falló la sección %s (%s)", sec.get("id"), e)
+                caidas.append("%s (%s)" % (sec.get("label") or sec.get("id"), e))
                 continue
             text = "".join(b.get("text", "") for b in (data.get("content") or [])
                            if b.get("type") == "text")
@@ -779,6 +800,12 @@ class SaguiDesigner(models.AbstractModel):
             if html:
                 htmls.append(html)
                 csss.append(css or "")
+            else:
+                caidas.append(_("%s (respuesta vacía)") % (sec.get("label") or sec.get("id")))
+        if caidas:
+            run.write({"report": _("Secciones que no se pudieron generar: %s") % "; ".join(caidas)})
+            _logger.warning("Sagui designer: %s sección(es) caída(s) en el run %s",
+                            len(caidas), run.id)
         if not htmls:
             return None, None
         css = self._base_css(plan) + "\n" + self._defuse_js_reveals("\n".join(csss))

@@ -80,10 +80,8 @@ class SaguiVerifierWeb(models.AbstractModel):
         # de que la revisión no ocurrió, en vez de leer un "no pasa" que nadie dictaminó.
         if result.get("verdict") == "error":
             verdict = "error"
-        elif any(f.get("severity") == "FAIL" for f in merged):
-            verdict = "fail"
         else:
-            verdict = result.get("verdict") or "pass"
+            verdict = self._verdict_por_rubrica(result.get("blocks") or {}, merged)
 
         verification = self.env["sagui.verification"].sudo().browse(result.get("verification_id"))
         if verification.exists():
@@ -100,6 +98,32 @@ class SaguiVerifierWeb(models.AbstractModel):
             "evidence_labels": [s.get("label") for s in shots.get("shots") or []],
         })
         return result
+
+    @api.model
+    def _verdict_por_rubrica(self, blocks, findings):
+        """Aplica la REGLA DE LA RÚBRICA, que no es "cualquier cosa mal = no pasa".
+
+        La rúbrica dice, con todas las letras: el sitio está listo cuando A, B y D pasan y C no
+        tiene ningún FAIL — un WARN en C es una nota de dirección de arte para el humano, no un
+        bloqueo. Antes se tomaba el veredicto que resumía el revisor, y un WARN de genericidad
+        alcanzaba para marcar el sitio como no apto. La regla vive acá, en código, y no depende
+        de que el revisor la recuerde.
+
+        Los hallazgos de DOM no los ve el revisor, así que su bloque se fuerza a fail acá.
+        """
+        bloques = {k.upper(): (v or "").lower() for k, v in (blocks or {}).items()}
+        for f in findings:
+            if f.get("severity") == "FAIL":
+                letra = (f.get("rubric") or "")[:1].upper()
+                if letra in ("A", "B", "C", "D"):
+                    bloques[letra] = "fail"
+
+        duros = [letra for letra in ("A", "B", "D") if bloques.get(letra, "pass") != "pass"]
+        c_fails = [f for f in findings
+                   if f.get("severity") == "FAIL" and (f.get("rubric") or "").startswith("C")]
+        if duros or c_fails:
+            return "fail"
+        return "pass"
 
     # ==================================================================
     #  Evidencia: subprocess a Playwright

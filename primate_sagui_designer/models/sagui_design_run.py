@@ -42,6 +42,12 @@ class SaguiDesignRun(models.Model):
     asset_attachment_ids = fields.Many2many(
         "ir.attachment", "sagui_design_run_asset_rel", "run_id", "attachment_id",
         string="Assets (logo, fotos)")
+    # EL LOGO NO ES UNA FOTO DE CONTENIDO. Va al header vía website.logo; si entra al pozo de
+    # imágenes disponibles, el generador lo mete en el primer slot que encuentre -pasó: usó el
+    # logo como "foto del tostador" y quedó un bloque oscuro- y la rúbrica lo castiga en B4.
+    logo_attachment_id = fields.Many2one(
+        "ir.attachment", string="Logo", ondelete="set null",
+        help="Se usa para el header del sitio, nunca como imagen de una sección.")
     documents_folder = fields.Char(string="Carpeta de Documentos")
 
     # --- sitios de referencia por URL (cuarto tipo de material) ---
