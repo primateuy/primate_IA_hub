@@ -249,10 +249,9 @@ class SaguiConnectorCredential(models.Model):
     _name = "sagui.connector.credential"
     _description = "Credencial per-user de un conector (cifrada)"
     _order = "id desc"
-    _sql_constraints = [
-        ("conn_user_uniq", "unique(connector_id, user_id)",
-         "Ya tenés una credencial para este conector."),
-    ]
+    _conn_user_uniq = models.Constraint(
+        "UNIQUE (connector_id, user_id)",
+        "Ya tenés una credencial para este conector.")
 
     connector_id = fields.Many2one(
         "sagui.connector", string="Conector", required=True, ondelete="cascade", index=True)

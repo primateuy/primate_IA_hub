@@ -53,6 +53,5 @@ class SaguiPendingWrite(models.Model):
     # duplicando el trabajo y quemando tokens de nuevo.
     build_started_at = fields.Datetime(string="Build iniciado", copy=False)
 
-    _sql_constraints = [
-        ("token_uniq", "unique(token)", "El token de la operación debe ser único."),
-    ]
+    _token_uniq = models.Constraint(
+        "UNIQUE (token)", "El token de la operación debe ser único.")

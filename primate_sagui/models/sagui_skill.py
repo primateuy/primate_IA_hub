@@ -49,9 +49,7 @@ class SaguiSkill(models.Model):
     body_preview = fields.Text(string="Contenido efectivo", compute="_compute_body_preview")
     char_count = fields.Integer(string="Caracteres", compute="_compute_body_preview")
 
-    _sql_constraints = [
-        ("key_uniq", "unique(key)", "Ya existe una skill con esa clave."),
-    ]
+    _key_uniq = models.Constraint("UNIQUE (key)", "Ya existe una skill con esa clave.")
 
     # ------------------------------------------------------------------ contenido
     @api.model

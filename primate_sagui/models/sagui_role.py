@@ -54,9 +54,7 @@ class SaguiRole(models.Model):
         string="Vueltas máximas", default=3,
         help="Tope de ciclos generar → verificar → corregir antes de reportarle al humano.")
 
-    _sql_constraints = [
-        ("key_uniq", "unique(key)", "Ya existe un rol con esa clave."),
-    ]
+    _key_uniq = models.Constraint("UNIQUE (key)", "Ya existe un rol con esa clave.")
 
     # ------------------------------------------------------------------ API
     @api.model

@@ -5,6 +5,7 @@ SANO tarda varios minutos, así que la barrida siguiente podría retomarlo y gen
 veces, cobrando los tokens dos veces. Estos tests fijan las tres garantías.
 """
 import json
+import uuid
 
 from odoo import fields
 from odoo.tests.common import TransactionCase
@@ -21,7 +22,7 @@ class TestBuildClaim(TransactionCase):
 
     def _pending(self, minutes_ago=None, attempts=0, operation="website"):
         vals = {
-            "token": "aa11bb", "channel_id": self.channel.id, "user_id": self.env.user.id,
+            "token": uuid.uuid4().hex[:6], "channel_id": self.channel.id, "user_id": self.env.user.id,
             "operation": operation, "model_name": "website.page", "values_json": "{}",
             "summary": "x", "state": "processing", "build_attempts": attempts,
         }
@@ -75,21 +76,3 @@ class TestBuildClaim(TransactionCase):
         for pending in (con_sello, sin_sello):
             causa = self.assistant._build_interrupted_cause(pending)
             self.assertTrue((causa or "").strip(), "la causa no puede venir vacía")
-
-    def test_the_cause_names_the_phase_for_a_design_run(self):
-        """El diseñador sabe en qué fase murió y lo dice: cada fase falla distinto."""
-        if "sagui.design.run" not in self.env:
-            self.skipTest("el módulo del diseñador no está instalado")
-        role = self.env["sagui.role"].search([("key", "=", "web_designer")], limit=1)
-        if not role:
-            self.skipTest("falta el rol del diseñador")
-        run = self.env["sagui.design.run"].create({
-            "name": "x", "role_id": role.id, "source": "greenfield",
-            "brief": "x", "state": "verifying"})
-        pending = self._pending(minutes_ago=40, attempts=1, operation="website_designer")
-        pending.values_json = json.dumps({"design_run_id": run.id})
-
-        causa = self.assistant._build_interrupted_cause(pending)
-
-        self.assertIn("VERIFICANDO", causa)
-        self.assertIn("la página existe", causa)

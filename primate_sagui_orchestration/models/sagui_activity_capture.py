@@ -36,9 +36,8 @@ class SaguiRepoMapping(models.Model):
                                  help="Si está activo, el PR se abre solo tras tests-ok (sin gate). "
                                       "Default OFF: cada PR requiere aprobación de un manager.")
 
-    _sql_constraints = [
-        ("client_key_uniq", "unique(client_key)", "La clave de cliente debe ser única."),
-    ]
+    _client_key_uniq = models.Constraint(
+        "UNIQUE (client_key)", "La clave de cliente debe ser única.")
 
 
 class SaguiActivityCapture(models.TransientModel):
