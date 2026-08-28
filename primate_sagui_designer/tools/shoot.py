@@ -135,6 +135,12 @@ def _login(context, base_url, login, password):
         page.close()
 
 
+# Altura máxima de una captura. Por encima, Chromium escala la imagen entera en vez de fallar,
+# y la captura deja de servir para mirar nada. 12000px son varias pantallas: alcanza de sobra
+# para leer el ritmo de una página y para revisar un sitio generado por nosotros.
+MAX_SHOT_HEIGHT = 12000
+
+
 def _capture(context, url, width, out_path, label):
     """Una captura full-page a un ancho + las sondas de DOM de esa vista."""
     page = context.new_page()
@@ -142,9 +148,23 @@ def _capture(context, url, width, out_path, label):
         page.set_viewport_size({"width": width, "height": 900})
         page.goto(url, timeout=NAV_TIMEOUT_MS, wait_until="networkidle")
         page.wait_for_timeout(SETTLE_MS)
-        page.screenshot(path=out_path, full_page=True)
+        # PÁGINAS MUY LARGAS. Chromium tiene un límite de textura (~16384px) y por encima la
+        # captura deja de ser confiable, así que se recorta a una altura sana y se DICE que se
+        # recortó. Ojo: el achicamiento a 1920px que se veía en los adjuntos NO era esto —era
+        # Odoo redimensionando la imagen al guardarla (ver image_no_postprocess en _attach).
+        alto = page.evaluate("() => document.documentElement.scrollHeight") or 0
+        recortada = alto > MAX_SHOT_HEIGHT
+        if recortada:
+            # LOS DOS JUNTOS. `clip` a secas se recorta contra el VIEWPORT y devuelve una
+            # captura de 900px de alto -medida y confirmada-; con full_page además, el clip
+            # se interpreta sobre la página entera, que es lo que se quiere.
+            page.screenshot(path=out_path, full_page=True, clip={
+                "x": 0, "y": 0, "width": width, "height": MAX_SHOT_HEIGHT})
+        else:
+            page.screenshot(path=out_path, full_page=True)
         probes = page.evaluate(PROBE_JS)
-        return {"label": label, "width": width, "path": out_path, "probes": probes, "error": None}
+        return {"label": label, "width": width, "path": out_path, "probes": probes,
+                "error": None, "page_height": alto, "truncated": recortada}
     except Exception as e:  # noqa: BLE001
         return {"label": label, "width": width, "path": None, "probes": {}, "error": str(e)}
     finally:

@@ -185,13 +185,19 @@ class SaguiVerifierWeb(models.AbstractModel):
                     raw = fh.read()
             except OSError:
                 continue
-            att = self.env["ir.attachment"].sudo().create({
-                "name": "verificacion-%s.png" % (shot.get("label") or "").replace(" ", "-"),
-                "raw": raw,
-                "mimetype": "image/png",
-                "res_model": "sagui.design.run" if res_id else False,
-                "res_id": res_id,
-            })
+            # image_no_postprocess ES OBLIGATORIO ACÁ. Odoo achica toda imagen que entra como
+            # adjunto al máximo de `base.image_autoresize_max_px` (1920 por defecto, del lado
+            # LARGO). Una captura full-page de 1440x5000 entraba como 553x1920: el revisor
+            # opinaba sobre espaciado, alineación y contraste mirando una tira ilegible, y la
+            # captura tenía buena pinta en la lista de adjuntos.
+            att = self.env["ir.attachment"].sudo().with_context(
+                image_no_postprocess=True).create({
+                    "name": "verificacion-%s.png" % (shot.get("label") or "").replace(" ", "-"),
+                    "raw": raw,
+                    "mimetype": "image/png",
+                    "res_model": "sagui.design.run" if res_id else False,
+                    "res_id": res_id,
+                })
             items.append({"label": shot.get("label") or att.name, "attachment_id": att.id})
         shutil.rmtree(shots.get("_out_dir") or "", ignore_errors=True)
         return items

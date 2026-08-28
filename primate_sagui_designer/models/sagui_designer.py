@@ -264,11 +264,14 @@ class SaguiDesigner(models.AbstractModel):
                         crudo = fh.read()
                 except OSError:
                     continue
-                adjuntos.append(env["ir.attachment"].sudo().create({
-                    "name": "referencia-%s-%sw.png" % (slug, shot.get("width")),
-                    "raw": crudo, "mimetype": "image/png",
-                    "res_model": "sagui.design.run", "res_id": run.id,
-                }).id)
+                # Sin image_no_postprocess, Odoo la achica a 1920 del lado largo y la
+                # referencia llega al modelo como una tira de 200px de ancho.
+                adjuntos.append(env["ir.attachment"].sudo().with_context(
+                    image_no_postprocess=True).create({
+                        "name": "referencia-%s-%sw.png" % (slug, shot.get("width")),
+                        "raw": crudo, "mimetype": "image/png",
+                        "res_model": "sagui.design.run", "res_id": run.id,
+                    }).id)
             shutil.rmtree(shots.get("_out_dir") or "", ignore_errors=True)
             resultados.append({"url": url, "attachment_ids": adjuntos, "error": None})
         todos = [i for r in resultados for i in r["attachment_ids"]]
