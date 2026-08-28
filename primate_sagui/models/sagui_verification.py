@@ -17,6 +17,8 @@
 import base64
 import json
 import logging
+import re
+import struct
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -92,6 +94,11 @@ class SaguiVerification(models.Model):
         "ir.attachment", "sagui_verification_evidence_rel", "verification_id", "attachment_id",
         string="Evidencia")
     evidence_labels = fields.Char(string="Etiquetas de la evidencia")
+    # QUÉ VIO REALMENTE EL REVISOR. Sin esto, una captura degradada -escalada por el
+    # postproceso de imágenes, recortada por altura, o tomada a un ancho que no es el del
+    # breakpoint- entra a la revisión sin que nadie lo note, y el revisor opina de espaciado
+    # y alineación mirando otra cosa.
+    evidence_dims_json = fields.Text(string="Dimensiones de la evidencia (JSON)")
 
     findings_json = fields.Text(string="Hallazgos (JSON)")
     blocks_json = fields.Text(string="Bloques de la rúbrica (JSON)")
@@ -154,10 +161,26 @@ class SaguiVerification(models.Model):
             items = self._collect(collector, target, evidence)
             if not items:
                 raise UserError(_("No hay evidencia para verificar: sin capturas no hay revisión."))
+            dims = self._measure_evidence(items)
             rec.write({
                 "evidence_ids": [(6, 0, [i["attachment_id"] for i in items])],
                 "evidence_labels": ", ".join(i.get("label") or "" for i in items),
+                "evidence_dims_json": json.dumps(dims, ensure_ascii=False),
             })
+            # CON EVIDENCIA DEGRADADA EL REVISOR NO CORRE. Gastar una llamada para que opine
+            # sobre una imagen que no es la página es peor que no verificar: devuelve hallazgos
+            # con pinta de ciertos. Se corta con un veredicto de INFRA, que no es un diseño
+            # reprobado y así hay que leerlo.
+            degradadas = [d for d in dims if d.get("degraded")]
+            if degradadas:
+                detalle = "; ".join(d["detail"] for d in degradadas)
+                rec.write({"verdict": "error",
+                           "notes": _("Evidencia degradada: %s") % detalle})
+                return {"verdict": "error", "error": _(
+                    "No verifiqué: la evidencia no sirve para revisar (%s). Es un problema de "
+                    "captura, NO un defecto del diseño.") % detalle,
+                    "findings": [], "verification_id": rec.id,
+                    "evidence_ids": rec.evidence_ids.ids, "infra": True}
             raw = self._review(provider, reviewer.get("model"), rec.rubric_text, context, items)
             parsed = self._parse(raw)
             rec.write({
@@ -180,6 +203,64 @@ class SaguiVerification(models.Model):
             "verification_id": rec.id,
             "evidence_ids": rec.evidence_ids.ids,
         }
+
+    def evidence_dims(self):
+        """Dimensiones medidas de la evidencia de esta verificación (lista de dicts)."""
+        self.ensure_one()
+        try:
+            return json.loads(self.evidence_dims_json or "[]")
+        except ValueError:
+            return []
+
+    @api.model
+    def _measure_evidence(self, items):
+        """Ancho y alto REALES de cada captura, y si sirve para revisar.
+
+        El PNG se lee de su cabecera IHDR: son 24 bytes y no hace falta una librería de
+        imágenes para saber cuánto mide.
+
+        Una captura está degradada cuando su ancho no coincide con el breakpoint que dice su
+        etiqueta. Eso pasó de verdad: Odoo redimensiona las imágenes al guardarlas como adjunto
+        (`base.image_autoresize_max_px`), y una captura de 1440x15106 entraba como 183x1920.
+        En la lista de adjuntos se veía perfecta.
+
+        Returns:
+            list: [{"attachment_id", "label", "width", "height", "expected_width",
+                    "degraded", "truncated", "detail"}]
+        """
+        salida = []
+        for item in items or []:
+            att = self.env["ir.attachment"].sudo().browse(item.get("attachment_id")).exists()
+            ancho = alto = 0
+            if att:
+                try:
+                    crudo = att.raw or b""
+                    if crudo[:8] == b"\x89PNG\r\n\x1a\n":
+                        ancho, alto = struct.unpack(">II", crudo[16:24])
+                except Exception:  # noqa: BLE001
+                    ancho = alto = 0
+            etiqueta = item.get("label") or ""
+            esperado = 0
+            encontrado = re.search(r"(\d{3,4})\s*(?:px|w)\b", etiqueta)
+            if encontrado:
+                esperado = int(encontrado.group(1))
+            degradada, detalle = False, ""
+            if not ancho:
+                degradada = True
+                detalle = _("«%s»: no pude leer las dimensiones de la captura") % etiqueta
+            elif esperado and ancho != esperado:
+                degradada = True
+                detalle = _(
+                    "«%(label)s» mide %(w)sx%(h)s px y debería medir %(e)s de ancho: la imagen "
+                    "se guardó escalada y no se puede revisar espaciado ni alineación sobre eso"
+                ) % {"label": etiqueta, "w": ancho, "h": alto, "e": esperado}
+            salida.append({
+                "attachment_id": item.get("attachment_id"), "label": etiqueta,
+                "width": ancho, "height": alto, "expected_width": esperado,
+                "degraded": degradada, "truncated": bool(item.get("truncated")),
+                "page_height": item.get("page_height") or 0, "detail": detalle,
+            })
+        return salida
 
     # ==================================================================
     #  Rúbrica: contenido o skill; NUNCA una ruta

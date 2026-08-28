@@ -143,6 +143,24 @@ class SaguiDesignRun(models.Model):
         capturas = len(self.verification_ids.mapped("evidence_ids"))
         lineas.append(_("Evidencia adjunta: %s captura(s) de la página real.") % capturas)
 
+        # UNA CAPTURA RECORTADA NO ES UNA PÁGINA SIN FINAL. Si se cortó por altura, hay que
+        # decirlo acá: si no, el revisor -o el humano- lee "no se ve el footer" y lo toma como
+        # un footer que falta, cuando lo que faltó fue encuadre.
+        recortadas = []
+        for verificacion in self.verification_ids:
+            for dim in verificacion.evidence_dims():
+                if dim.get("truncated"):
+                    recortadas.append(dim)
+        if recortadas:
+            lineas.append(_(
+                "✂️ %(n)s captura(s) se recortaron por altura (la página mide más que el tope "
+                "de captura): %(cuales)s. Lo que quede por debajo NO se revisó, y su ausencia "
+                "en la imagen no significa que falte en la página."
+            ) % {"n": len(recortadas),
+                 "cuales": ", ".join(
+                     "%s (%s px de alto real)" % (d.get("label") or "?", d.get("page_height") or "?")
+                     for d in recortadas)})
+
         # ¿Se pudo verificar D4 con una sesión logueada?
         d4 = [f for f in self.open_findings() if f.get("rubric") == "D4"]
         no_verificado = [f for f in d4 if f.get("method") == "no verificado"]

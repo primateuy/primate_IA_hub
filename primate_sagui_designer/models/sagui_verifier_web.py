@@ -198,7 +198,14 @@ class SaguiVerifierWeb(models.AbstractModel):
                     "res_model": "sagui.design.run" if res_id else False,
                     "res_id": res_id,
                 })
-            items.append({"label": shot.get("label") or att.name, "attachment_id": att.id})
+            items.append({
+                "label": shot.get("label") or att.name, "attachment_id": att.id,
+                # Viaja el recorte: una captura cortada a la altura máxima NO muestra el final
+                # de la página, y sin decirlo el revisor reporta "falta el footer" sobre un
+                # footer que existe y quedó fuera del encuadre.
+                "truncated": bool(shot.get("truncated")),
+                "page_height": shot.get("page_height") or 0,
+            })
         shutil.rmtree(shots.get("_out_dir") or "", ignore_errors=True)
         return items
 
