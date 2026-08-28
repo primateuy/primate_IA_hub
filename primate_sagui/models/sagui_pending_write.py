@@ -47,6 +47,11 @@ class SaguiPendingWrite(models.Model):
     # Intentos de build (sitios): el cron lo incrementa y commitea ANTES de construir, así un kill
     # por timeout no se pierde y no se re-genera infinitamente (cap de reintentos = tope de tokens).
     build_attempts = fields.Integer(string="Intentos de build", default=0, copy=False)
+    # CUÁNDO SE EMPEZÓ A CONSTRUIR ESTE, que no es lo mismo que write_date -cualquier escritura
+    # lo mueve-. Con el cron barriendo cada 10 minutos y builds que tardan varios, sin esto un
+    # build sano en curso se ve igual que uno muerto y la barrida siguiente lo retomaría,
+    # duplicando el trabajo y quemando tokens de nuevo.
+    build_started_at = fields.Datetime(string="Build iniciado", copy=False)
 
     _sql_constraints = [
         ("token_uniq", "unique(token)", "El token de la operación debe ser único."),

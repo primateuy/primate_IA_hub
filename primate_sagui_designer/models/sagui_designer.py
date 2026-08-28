@@ -204,6 +204,37 @@ class SaguiDesigner(models.AbstractModel):
     def _build_operations(self):
         return super()._build_operations() + ("website_designer",)
 
+    @api.model
+    def _build_interrupted_cause(self, pending):
+        """La causa del corte, con lo que el diseñador sí sabe: en qué fase estaba.
+
+        El estado del run dice dónde murió, y cada fase falla por motivos distintos —generar
+        las secciones llama al modelo muchas veces y es lo que más tarda; verificar captura y
+        revisa—. Decírselo al usuario le permite decidir: acortar el brief, pedir menos
+        secciones, o avisar que el proveedor está caído.
+        """
+        generico = super()._build_interrupted_cause(pending)
+        if pending.operation != "website_designer":
+            return generico
+        try:
+            run_id = json.loads(pending.values_json or "{}").get("design_run_id")
+        except ValueError:
+            return generico
+        run = self.env["sagui.design.run"].sudo().browse(run_id).exists()
+        if not run:
+            return generico
+        fases = {
+            "building": _(
+                "se cortó COMPONIENDO LAS SECCIONES, que es la parte larga porque llama al "
+                "modelo una vez por sección; con un brief más corto o menos secciones entra"),
+            "verifying": _(
+                "el sitio ya estaba construido y se cortó VERIFICANDO —capturas y revisión—, "
+                "así que la página existe aunque nadie la haya revisado"),
+            "draft": _("se cortó antes de empezar a construir"),
+        }
+        detalle = fases.get(run.state)
+        return "%s (%s)" % (detalle, generico) if detalle else generico
+
     # ==================================================================
     #  Sitios de referencia por URL (cuarto tipo de material)
     # ==================================================================

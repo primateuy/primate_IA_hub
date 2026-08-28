@@ -170,7 +170,9 @@ class SaguiGreenfield(models.AbstractModel):
             return _("No hay chat para consultar el estado.")
         recs = self.env["primate.sagui.pending.write"].sudo().search([
             ("channel_id", "=", channel.id), ("user_id", "=", user.id),
-            ("operation", "in", ("website", "website_greenfield")),
+            # De _build_operations(), no de una lista escrita acá: si no, un flujo agregado
+            # por otro módulo queda INVISIBLE cuando el usuario pregunta cómo va su sitio.
+            ("operation", "in", list(self._build_operations())),
         ], order="create_date desc", limit=5)
         estados = {"pending": "esperando confirmación", "processing": "EN PROCESO (todavía no está)",
                    "done": "LISTO", "error": "falló", "cancelled": "cancelado", "expired": "expirado"}

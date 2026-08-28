@@ -579,6 +579,74 @@ class SaguiAssistant(models.AbstractModel):
         """
         return ("website", "website_greenfield")
 
+    # Cuánto puede tardar un build sano antes de considerarlo muerto. Con el cron barriendo
+    # cada 10 minutos, sin esta ventana la segunda barrida retomaría un build EN CURSO.
+    BUILD_STUCK_MINUTES = 25
+
+    @api.model
+    def _claim_pending_builds(self, Pending, limit=5):
+        """Toma pendings para construir, garantizando que NADIE MÁS los tome.
+
+        Dos cosas que no son lo mismo y las dos hacen falta:
+
+        1. **No retomar un build vivo.** Un build sano tarda minutos y el cron barre cada 10:
+           sin mirar `build_started_at`, la barrida siguiente lo agarraría de nuevo, generaría
+           el sitio dos veces y cobraría los tokens dos veces. Sólo se retoma lo que nunca
+           arrancó o lo que lleva más de BUILD_STUCK_MINUTES sin terminar.
+
+        2. **No tomarlo dos veces a la vez.** El cron corre por intervalo Y por `_trigger()`,
+           así que dos ejecuciones pueden solaparse. `FOR UPDATE SKIP LOCKED` hace que la
+           segunda vea las filas ya tomadas y las saltee, en vez de esperar o duplicar.
+
+        Returns:
+            recordset: Los pendings tomados por ESTA corrida.
+        """
+        limite = fields.Datetime.subtract(
+            fields.Datetime.now(), minutes=self.BUILD_STUCK_MINUTES)
+        # EL SQL CRUDO NO VE LO QUE EL ORM TODAVÍA TIENE EN MEMORIA. Sin bajar los cambios
+        # pendientes, un pending recién marcado como 'processing' en esta misma transacción es
+        # invisible para la consulta y se queda esperando la barrida siguiente.
+        self.env.flush_all()
+        self.env.cr.execute("""
+            SELECT id
+              FROM primate_sagui_pending_write
+             WHERE state = 'processing'
+               AND operation IN %s
+               AND (build_started_at IS NULL OR build_started_at < %s)
+             ORDER BY create_date
+             LIMIT %s
+               FOR UPDATE SKIP LOCKED
+        """, (tuple(self._build_operations()), limite, limit))
+        ids = [row[0] for row in self.env.cr.fetchall()]
+        if not ids:
+            return Pending.browse([])
+        tomados = Pending.browse(ids)
+        # SE MARCA LA TOMA EN LA BASE, no sólo con el lock. El SKIP LOCKED protege hasta el
+        # primer commit del bucle de builds, que llega enseguida; de ahí en adelante lo que
+        # aleja a otra corrida es `build_started_at`. El commit lo hace el cron ni bien vuelve
+        # de acá: no se commitea desde este método porque un método que commitea no se puede
+        # probar -Odoo prohíbe commitear dentro de un test- y esta garantía necesita tests.
+        tomados.write({"build_started_at": fields.Datetime.now()})
+        self.env.flush_all()
+        return tomados
+
+    @api.model
+    def _build_interrupted_cause(self, pending):
+        """Por qué se cortó el intento anterior, en palabras para el usuario.
+
+        Genérica acá: el módulo que agrega un flujo la refina con lo que él sabe (en qué fase
+        estaba, qué quedó a medio hacer). Nunca devuelve "" — un aviso que dice que algo se
+        cortó y no dice nada más no ayuda a decidir.
+        """
+        arrancado = pending.build_started_at
+        if arrancado:
+            minutos = int(
+                (fields.Datetime.now() - arrancado).total_seconds() // 60)
+            return _(
+                "venía corriendo hace %s minutos y se cortó sin terminar, casi siempre porque "
+                "el proceso se pasó del tiempo máximo") % max(minutos, 1)
+        return _("no llegó a registrar cuándo arrancó, así que probablemente murió al empezar")
+
     @api.model
     def _cron_process_pending_builds(self):
         """Construye los sitios confirmados FUERA del request del chat (lo dispara
@@ -586,10 +654,10 @@ class SaguiAssistant(models.AbstractModel):
         uno falla no afecta a los demás, y los ya hechos (state!='processing') no se re-corren —
         así un reintento del usuario no vuelve a quemar tokens."""
         Pending = self.env["primate.sagui.pending.write"].sudo()
-        pendings = Pending.search([
-            ("operation", "in", list(self._build_operations())),
-            ("state", "=", "processing"),
-        ], order="create_date", limit=5)
+        pendings = self._claim_pending_builds(Pending)
+        # La toma se persiste ACÁ, ni bien se hizo: si el proceso se cae en el medio, estos
+        # pendings ya quedaron marcados y ninguna otra corrida los va a duplicar.
+        self.env.cr.commit()
         MAX_ATTEMPTS = 2
         for pending in pendings:
             channel, author = pending.channel_id, pending.user_id
@@ -614,14 +682,17 @@ class SaguiAssistant(models.AbstractModel):
             # reintentar, porque el reintento tarda otro tanto.
             if pending.build_attempts:
                 self._post_bot_reply(channel, _(
-                    "⚠️ El intento anterior de construir el sitio (%s) se cortó antes de "
-                    "terminar —normalmente por tardar demasiado—. Lo reintento una vez más y "
-                    "te aviso acá cómo sale."
-                ) % pending.token)
+                    "⚠️ El intento anterior de construir el sitio (%(token)s) se cortó antes de "
+                    "terminar: %(causa)s. Lo reintento una vez más y te aviso acá cómo sale."
+                ) % {"token": pending.token,
+                     "causa": self._build_interrupted_cause(pending)})
                 self.env.cr.commit()
             # Incrementar intentos y COMMIT ANTES de construir: si un kill por timeout aborta el
             # build, el contador queda persistido (no se pierde en el rollback) y no se reintenta sin fin.
-            pending.write({"build_attempts": pending.build_attempts + 1})
+            # Se refresca el reloj justo antes de construir: es el que después mide "venía
+            # corriendo hace N minutos" en el aviso de corte.
+            pending.write({"build_attempts": pending.build_attempts + 1,
+                           "build_started_at": fields.Datetime.now()})
             self.env.cr.commit()
             try:
                 self._execute_pending(channel, author, pending)  # setea done/error + postea
