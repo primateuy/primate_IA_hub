@@ -1,32 +1,61 @@
 # =============================================================================
 # Dependencias Python — Ecosistema Sagui para Odoo 19 (PrimateUY)
-# Módulos: primate_ai_connector, primate_sagui, primate_sagui_orchestration
+# Módulos: primate_ai_connector, primate_sagui, primate_sagui_orchestration,
+#          primate_sagui_designer
 #
-# Instalación desde 0 (en el venv de Odoo):
+# Instalación (en el venv de Odoo):
 #   pip install -r requirements.txt
 #
-# Versiones probadas en el entorno actual (mínimos seguros con >=):
-#   requests 2.31.0 · cryptography 42.0.8 · openpyxl 3.1.2
-#   Pillow 10.2.0 · PyMuPDF 1.27.2.3 · mcp 1.28.0
+# =============================================================================
+# REGLA: acá va SÓLO lo que Odoo NO trae. Nada más.
+#
+# odoo.sh instala este archivo sobre la imagen, así que cualquier `>=` sobre un
+# paquete que Odoo ya fija lo EMPUJA a una versión más nueva y puede romper el
+# arranque entero. Nos pasó: teníamos `cryptography>=42.0` y el build murió con
+#
+#     AttributeError: module 'lib' has no attribute 'GEN_EMAIL'
+#     Failed to load server-wide module `base`
+#
+# porque el requirements de Odoo 19 dice, textual:
+#
+#     cryptography==42.0.8 ; python_version >= '3.12'
+#     pyopenssl==24.1.0    ; python_version >= '3.12'
+#         # pinned for compatibility with cryptography==42.0.8
+#
+# pip resolvió nuestro `>=` a una cryptography posterior y el pyOpenSSL del
+# sistema quedó llamando símbolos que ya no existen. Ni `base` ni `web` cargan.
+#
+# Si necesitás una versión concreta de algo que Odoo ya trae, NO lo agregues acá:
+# verificá primero contra `odoo/requirements.txt` de la versión que corresponda.
 # =============================================================================
 
-# --- Ya suelen venir con Odoo (se listan para un install limpio sin Odoo) ---
-requests>=2.31          # HTTP a la API de Anthropic + notificaciones (telegram/webhook)
-cryptography>=42.0       # Fernet — cifrado de credenciales de conectores MCP
-openpyxl>=3.1            # xlsx — import de productos y salida de recetas a archivo
-Pillow>=10.0             # PIL — extracción de paleta de logos raster (greenfield)
-
-# --- NO vienen con Odoo: imprescindibles para que los módulos carguen ---
 PyMuPDF>=1.24            # 'fitz' — extracción de PDF (generador de sitios / greenfield)
 mcp>=1.0                 # SDK cliente MCP (framework de conectores: GitHub, etc.)
 
+# PENDIENTE DE DECISIÓN — playwright (verificador visual de primate_sagui_designer).
+# El manifest de ese módulo lo declara en external_dependencies, así que sin él el módulo
+# NO se puede instalar en odoo.sh (el build no se rompe: la validación corre al instalar).
+# No se agrega todavía a propósito: es una dependencia pesada y además necesita bajar un
+# navegador aparte (`playwright install chromium`), que en odoo.sh hay que resolver por
+# separado. Sin navegador el verificador degrada solo — devuelve veredicto 'error' y avisa
+# que nadie revisó, en vez de romper. Decidir antes de querer usar el rol en staging.
+
+# =============================================================================
+# YA VIENEN CON ODOO — NO LOS AGREGUES COMO LÍNEAS INSTALABLES.
+# Se listan sólo para saber de qué depende el código:
+#
+#   requests       HTTP a la API de Anthropic + notificaciones (telegram/webhook)
+#   cryptography   Fernet — cifrado de credenciales de conectores MCP
+#   openpyxl       xlsx — import de productos y salida de recetas a archivo
+#   Pillow         PIL — medición de evidencia y paleta de logos raster
+#
 # =============================================================================
 # NO son paquetes pip (instalar aparte si se usan esas features):
 #
+#   - playwright necesita además su navegador:  playwright install chromium
 #   - El runner local (primate_sagui_orchestration/runner/) usa SOLO la stdlib,
 #     pero para la Fase 3 (push + PR) necesita los CLIs:
 #         git   y   gh (GitHub CLI)   autenticados.
-#
 #   - El conector MCP de GitHub corre el server oficial vía Docker:
 #         docker  +  imagen ghcr.io/github/github-mcp-server
 # =============================================================================
