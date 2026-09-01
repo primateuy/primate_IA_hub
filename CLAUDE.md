@@ -131,6 +131,19 @@ costo se va en tokens de entrada. Palancas ya implementadas:
 - **El intérprete NO es el `python3` del sistema**: ese no tiene ninguna dependencia de Odoo.
   El venv de Odoo 19 es `~/Desktop/Odoo/clients/forum/.venv19` (Python 3.12). Vive bajo el
   cliente `forum` por historia, pero es el de la versión, no el de ese cliente.
+- **Lo que hay que instarle a un venv de v19 recién armado**, además del `requirements.txt` de
+  Odoo. Ninguno de estos tres está ahí y los tres se descubren de golpe, con un error que manda
+  a diagnosticar a otro lado:
+
+  ```bash
+  pip install PyMuPDF mcp websocket-client
+  ```
+
+  | paquete | quién lo pide | qué pasa si falta |
+  |---|---|---|
+  | `PyMuPDF` (importa como `fitz`) | `primate_sagui` (`external_dependencies`) | Odoo se niega a instalar el módulo con `PackageNotFoundError: No package metadata was found for fitz`. Ojo: el paquete NO se llama `fitz` |
+  | `mcp` | `primate_sagui` (`external_dependencies`) | lo mismo |
+  | `websocket-client` | los tours (`HttpCase`) | el tour se **saltea** y la corrida termina en verde sin haberlo corrido |
 - **Los tours no fallan cuando no pueden correr: se saltean.** Es la trampa cara, porque la
   corrida termina en verde y uno cree que verificó. Hay que leer el log, no el código de salida.
   Tres causas, todas de entorno y ninguna del módulo:
