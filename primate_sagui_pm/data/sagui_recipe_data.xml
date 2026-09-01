@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        La receta de auditoría. `mode=propose` y SIN scope de auto (allowed_models vacío = nada se
+        auto-aplica): todo queda esperando aprobación. La decisión de qué reglas pasan a 'auto' se
+        toma después, con la tasa de propuestas aprobadas sin cambios que registra sagui.pm.run.
+
+        noupdate="1": una actualización del módulo no pisa los parámetros ni el modo si el cliente
+        los ajustó.
+    -->
+    <data noupdate="1">
+
+        <record id="recipe_auditoria_proyectos" model="sagui.recipe">
+            <field name="name">Auditoría de proyectos</field>
+            <field name="description">Recorre proyectos, tareas y actividades con el playbook del
+Gestor de Proyectos y devuelve un informe agrupado por regla y por proyecto. Cada hallazgo con
+valor concreto queda como propuesta a aprobar; nada se aplica solo.</field>
+            <field name="category">Proyectos</field>
+            <field name="tags">gestión,higiene,auditoría</field>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="shared" eval="True"/>
+            <field name="output_type">chat</field>
+            <field name="mode">propose</field>
+            <field name="allowed_models"></field>
+            <field name="max_records_per_run">0</field>
+            <field name="allow_unlink" eval="False"/>
+            <field name="instruction">Auditá los proyectos con el playbook del Gestor de Proyectos.
+
+Parámetros de esta corrida:
+- alcance: {alcance}
+- área (sólo si alcance = area): {area}
+- proyecto (sólo si alcance = proyecto): {proyecto}
+- días sin movimiento: {dias}
+
+Llamá `auditar_proyectos` UNA sola vez con esos parámetros. Si el alcance es "area", pasá el id
+numérico que figura arriba en `area_id`. Si es "proyecto", pasá su id numérico en `project_id`.
+Si el campo de días vino vacío, no mandes `dias` y se usa el umbral del dashboard.
+
+Devolvé el informe tal cual te lo da la tool, sin recalcular ningún número. Podés agregar al final
+UN párrafo corto diciendo por dónde empezarías y por qué. Si no hay hallazgos, decilo en una línea
+y nada más.</field>
+        </record>
+
+        <record id="recipe_param_alcance" model="sagui.recipe.param">
+            <field name="recipe_id" ref="recipe_auditoria_proyectos"/>
+            <field name="sequence">10</field>
+            <field name="name">alcance</field>
+            <field name="label">Alcance</field>
+            <field name="ptype">selection</field>
+            <field name="selection_options">todo,area,proyecto</field>
+            <field name="required" eval="True"/>
+            <field name="default">todo</field>
+        </record>
+
+        <record id="recipe_param_area" model="sagui.recipe.param">
+            <field name="recipe_id" ref="recipe_auditoria_proyectos"/>
+            <field name="sequence">20</field>
+            <field name="name">area</field>
+            <field name="label">Área (si el alcance es un área)</field>
+            <field name="ptype">many2one</field>
+            <field name="relation">primate.area</field>
+        </record>
+
+        <record id="recipe_param_proyecto" model="sagui.recipe.param">
+            <field name="recipe_id" ref="recipe_auditoria_proyectos"/>
+            <field name="sequence">30</field>
+            <field name="name">proyecto</field>
+            <field name="label">Proyecto (si el alcance es un proyecto)</field>
+            <field name="ptype">many2one</field>
+            <field name="relation">project.project</field>
+        </record>
+
+        <record id="recipe_param_dias" model="sagui.recipe.param">
+            <field name="recipe_id" ref="recipe_auditoria_proyectos"/>
+            <field name="sequence">40</field>
+            <field name="name">dias</field>
+            <field name="label">Días sin movimiento (vacío = umbral del dashboard)</field>
+            <field name="ptype">number</field>
+        </record>
+
+    </data>
+</odoo>

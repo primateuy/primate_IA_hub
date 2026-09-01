@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sagui_pm_run_user,sagui.pm.run.user,model_sagui_pm_run,base.group_user,1,1,1,0
+access_sagui_pm_run_manager,sagui.pm.run.manager,model_sagui_pm_run,project.group_project_manager,1,1,1,1
+access_sagui_pm_finding_user,sagui.pm.finding.user,model_sagui_pm_finding,base.group_user,1,1,1,0
+access_sagui_pm_finding_manager,sagui.pm.finding.manager,model_sagui_pm_finding,project.group_project_manager,1,1,1,1

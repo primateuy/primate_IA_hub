@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        El playbook apunta al .md VERSIONADO del addon. El contenido no se copia acá a propósito:
+        el archivo es la fuente de verdad y lo lee tanto Claude Code (en el repo) como Sagui (en
+        runtime). `body` queda vacío y sólo se usa para pisar la skill en caliente.
+    -->
+
+    <record id="skill_project_management" model="sagui.skill">
+        <field name="name">Gestor de Proyectos — reglas, riesgos y convenciones</field>
+        <field name="key">project-management</field>
+        <field name="kind">skill</field>
+        <field name="sequence">10</field>
+        <field name="source_path">primate_sagui_pm/skills/project-management/SKILL.md</field>
+    </record>
+
+</odoo>

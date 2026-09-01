@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="sagui_pm_run_view_list" model="ir.ui.view">
+        <field name="name">sagui.pm.run.list</field>
+        <field name="model">sagui.pm.run</field>
+        <field name="arch" type="xml">
+            <list string="Corridas del gestor">
+                <field name="date"/>
+                <field name="origen"/>
+                <field name="alcance"/>
+                <field name="area_id"/>
+                <field name="project_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="propuesta_count" string="Propuestas"/>
+                <field name="pregunta_count" string="Preguntas"/>
+                <field name="aprobadas_count" string="Aprobadas"/>
+                <field name="rechazadas_count" string="Rechazadas"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sagui_pm_run_view_form" model="ir.ui.view">
+        <field name="name">sagui.pm.run.form</field>
+        <field name="model">sagui.pm.run</field>
+        <field name="arch" type="xml">
+            <form string="Corrida del gestor">
+                <sheet>
+                    <h1><field name="name" readonly="1"/></h1>
+                    <group>
+                        <group>
+                            <field name="origen"/>
+                            <field name="recipe_id"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="alcance"/>
+                            <field name="area_id" invisible="alcance != 'area'"/>
+                            <field name="project_id" invisible="alcance != 'proyecto'"/>
+                            <field name="dias"/>
+                            <field name="desde"/>
+                        </group>
+                    </group>
+                    <group string="Resultado de las propuestas">
+                        <group>
+                            <field name="propuesta_count"/>
+                            <field name="pregunta_count"/>
+                            <field name="nota_count"/>
+                        </group>
+                        <group>
+                            <field name="aprobadas_count"/>
+                            <field name="rechazadas_count"/>
+                            <field name="pendientes_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Hallazgos" name="hallazgos">
+                            <field name="finding_ids" readonly="1">
+                                <list>
+                                    <field name="bloque" optional="hide"/>
+                                    <field name="regla"/>
+                                    <field name="tipo"/>
+                                    <field name="riesgo"/>
+                                    <field name="project_id"/>
+                                    <field name="area_id" optional="hide"/>
+                                    <field name="res_name" string="Registro"/>
+                                    <field name="resumen"/>
+                                    <field name="state" string="Propuesta"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Informe" name="informe">
+                            <field name="informe" readonly="1" widget="text"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sagui_pm_run_view_search" model="ir.ui.view">
+        <field name="name">sagui.pm.run.search</field>
+        <field name="model">sagui.pm.run</field>
+        <field name="arch" type="xml">
+            <search string="Corridas">
+                <field name="area_id"/>
+                <field name="project_id"/>
+                <field name="user_id"/>
+                <filter string="Recetas" name="receta" domain="[('origen', '=', 'receta')]"/>
+                <filter string="Automatizaciones" name="automatizacion"
+                    domain="[('origen', '=', 'automatizacion')]"/>
+                <group>
+                    <filter string="Área" name="por_area" context="{'group_by': 'area_id'}"/>
+                    <filter string="Alcance" name="por_alcance" context="{'group_by': 'alcance'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sagui_pm_run_action" model="ir.actions.act_window">
+        <field name="name">Corridas del Gestor de Proyectos</field>
+        <field name="res_model">sagui.pm.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem
+        id="sagui_pm_run_menu"
+        name="Gestor de Proyectos (Sagui)"
+        parent="project.menu_project_config"
+        action="sagui_pm_run_action"
+        sequence="90"/>
+
+</odoo>
