@@ -126,6 +126,35 @@ costo se va en tokens de entrada. Palancas ya implementadas:
 - Probar el chat: instalar, configurar la API key en Ajustes, abrir Discuss y mandarle un DM al
   usuario Sagui.
 
+### El entorno de v19 (dónde está y qué le falta)
+
+- **El intérprete NO es el `python3` del sistema**: ese no tiene ninguna dependencia de Odoo.
+  El venv de Odoo 19 es `~/Desktop/Odoo/clients/forum/.venv19` (Python 3.12). Vive bajo el
+  cliente `forum` por historia, pero es el de la versión, no el de ese cliente.
+- **Los tours no fallan cuando no pueden correr: se saltean.** Es la trampa cara, porque la
+  corrida termina en verde y uno cree que verificó. Hay que leer el log, no el código de salida.
+  Tres causas, todas de entorno y ninguna del módulo:
+
+  1. **Falta `websocket-client`** (`pip install websocket-client`). No está en el
+     `requirements.txt` de Odoo, así que un venv recién armado no lo tiene. El log dice
+     `skipped ... websocket-client module is not installed`.
+  2. **Falta el `--db-filter`.** `-d <base>` decide contra qué base corre el proceso, pero las
+     requests del navegador pasan por el `dbfilter` del `.conf`, que en un conf de cliente
+     apunta a otra base. El tour abre la página contra ESA otra base y muere con
+     `Failed to load registry` / `some depends are not loaded`, que se lee como un problema de
+     dependencias del módulo y no lo es. Siempre:
+     `-d <base> --db-filter='^<base>$'`.
+  3. **Base clonada con `createdb -T` sin filestore.** El clon copia la base pero no
+     `~/Library/Application Support/Odoo/filestore/<base>/`, donde viven los bundles de assets.
+     La página no carga el JS, el tour se cuelga esperando `isTourReady` y muere por timeout.
+     Se copia con `rsync -a "$FS/<origen>/" "$FS/<clon>/"`.
+
+- **Traducciones**: en Odoo 19 no existe `--i18n-export`; es el subcomando
+  `odoo-bin i18n export -c <conf> -d <db> -l es_UY -o <archivo.po> <modulo>`. Y antes de
+  exportar hay que **cargar el idioma y actualizar el módulo** (`i18n loadlang -l es_UY`,
+  después `-u <modulo>`): exportar contra una base sin el idioma activo devuelve todos los
+  `msgstr` vacíos y borra el `.po` entero.
+
 ## Trampas de Odoo 19 (verificadas contra el código instalado)
 
 Cosas que fallan en silencio o mandan a diagnosticar donde no es. Todas comprobadas en este
