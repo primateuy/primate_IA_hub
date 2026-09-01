@@ -138,6 +138,16 @@ class TestAuditoriaPuntaAPunta(PmCommon):
             len(run.finding_ids.filtered(lambda f: f.regla == "tarea_sin_etapa")))
 
     def test_el_resultado_sale_del_estado_real_de_las_propuestas(self):
+        """REGRESIÓN: el contador se leía ANTES y quedaba cacheado.
+
+        `aprobadas_count` es un compute NO almacenado. Sin `@api.depends` sobre el estado de la
+        propuesta, la primera lectura lo cachea y después de aprobar sigue devolviendo el valor
+        viejo. Es el número que decide qué reglas pasan a modo 'auto', así que fallar en silencio
+        es peor que romper.
+
+        La lectura de abajo, ANTES de aprobar, no es una verificación de más: es la que provoca
+        el cacheo. Sin ella el test pasa aunque el `depends` no esté. NO la borres.
+        """
         self._armar_escenario()
         run, _informe = self._correr()
         self.assertEqual(run.aprobadas_count, 0)
