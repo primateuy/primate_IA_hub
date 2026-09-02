@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        FRAGMENTOS DE PROMPT, no procedimientos.
+
+        Ojo con la diferencia respecto de las skills del diseñador: aquéllas son un SKILL.md que el
+        agente lee y sigue; éstas se CONCATENAN LITERALMENTE al system prompt del asistente de
+        chat. Todo lo que se escriba en estos archivos le llega al modelo tal cual, así que no
+        llevan frontmatter, ni títulos, ni notas para humanos: lo que no sea instrucción para el
+        modelo, no va.
+
+        Cada una la pide su mixin con `content_of()` y SÓLO cuando corresponde (ver el comentario
+        de cada `_system_prompt`). Por eso NO cuelgan del rol chat_assistant: una skill listada en
+        un rol se inyecta siempre, y estas cuatro son condicionales.
+    -->
+
+    <record id="skill_website_from_pdf" model="sagui.skill">
+        <field name="name">Chat — sitio web desde un PDF</field>
+        <field name="key">website-from-pdf</field>
+        <field name="kind">skill</field>
+        <field name="sequence">10</field>
+        <field name="source_path">primate_sagui/skills/website-from-pdf/SKILL.md</field>
+    </record>
+
+</odoo>
