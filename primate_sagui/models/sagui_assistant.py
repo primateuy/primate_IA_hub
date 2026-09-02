@@ -77,34 +77,14 @@ class SaguiAssistant(models.AbstractModel):
         prompt = self.env["sagui.role"].get("chat_assistant").system_prompt
         whitelist = self._write_whitelist()
         if whitelist:
-            prompt += (
-                "\n\nESCRITURA DE DATOS (con confirmación OBLIGATORIA del usuario): además de "
-                "leer, podés PROPONER crear o modificar registros con crear_registro y "
-                "modificar_registros, SOLO en estos modelos: %s. Estas herramientas NO aplican "
-                "el cambio: registran una propuesta con un token. Cuando las uses, explicá en "
-                "una frase qué se va a crear/cambiar y pedile al usuario que responda "
-                "exactamente 'confirmar <token>' para aplicar o 'cancelar <token>' para "
-                "descartar. NUNCA afirmes que un cambio ya se aplicó: se aplica recién cuando "
-                "el usuario confirma." % ", ".join(sorted(whitelist))
-            )
+            # OBLIGATORIA, no `content_of`: este fragmento le dice al modelo QUÉ modelos puede
+            # proponer escribir y cómo se confirma cada cambio. Si el .md no resuelve, el
+            # asistente conservaría las tools de escritura pero perdería la lista y el
+            # procedimiento del token, en silencio. Falla cerrado, y sólo cuando hay whitelist.
+            plantilla = self.env["sagui.skill"].content_of_required("write-whitelist")
+            prompt += "\n\n" + plantilla % ", ".join(sorted(whitelist))
         if "account.move" in whitelist:
-            prompt += (
-                "\n\nFACTURAS DESDE DOCUMENTO: si el usuario adjunta una imagen o PDF de una "
-                "factura, leela y extraé los datos clave (proveedor/cliente, fecha, y cada línea "
-                "con producto, cantidad, precio unitario e impuestos). VERIFICÁ cada dato contra "
-                "Odoo con buscar_registros ANTES de usarlo: buscá el partner por nombre/RUT/CUIT y "
-                "cada producto por nombre o código (default_code). Si algo no existe (un producto, "
-                "el cliente), NO lo inventes: preguntale al usuario a qué registro existente "
-                "mapearlo, o si quiere que lo cree (en ese caso proponé su creación con "
-                "crear_registro, que también se confirma). Determiná el tipo: 'in_invoice' "
-                "(factura de proveedor que recibimos) u 'out_invoice' (factura a un cliente); si no "
-                "es claro por el documento, preguntá. Cuando tengas TODOS los ids resueltos, "
-                "proponé la factura con crear_registro sobre account.move incluyendo move_type, "
-                "partner_id, invoice_date y invoice_line_ids como comandos, por ejemplo "
-                "[[0,0,{\"product_id\": ID, \"quantity\": N, \"price_unit\": P}]]. Dejá la factura "
-                "en BORRADOR: no la confirmes ni la valides; el usuario la revisa y la valida desde "
-                "Odoo."
-            )
+            prompt += "\n\n" + self.env["sagui.skill"].content_of("invoice-from-document")
         return prompt
 
     # ---------- tiering de modelo (Sonnet análisis / Haiku rápido) ----------

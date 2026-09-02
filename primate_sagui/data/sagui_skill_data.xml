@@ -46,4 +46,27 @@
         <field name="source_path">primate_sagui/skills/mcp-connectors/SKILL.md</field>
     </record>
 
+    <!--
+        Las dos siguientes son del prompt BASE del asistente, no de un mixin. `write-whitelist`
+        es una PLANTILLA: lleva un %s donde se interpola la lista de modelos escribibles, así que
+        no se puede tocar ese marcador sin romper el prompt. Y se carga con `content_of_required`:
+        gobierna qué puede escribir el asistente, y desaparecer en silencio no es una opción.
+    -->
+
+    <record id="skill_write_whitelist" model="sagui.skill">
+        <field name="name">Chat — escritura de datos con confirmación (OBLIGATORIA)</field>
+        <field name="key">write-whitelist</field>
+        <field name="kind">skill</field>
+        <field name="sequence">5</field>
+        <field name="source_path">primate_sagui/skills/write-whitelist/SKILL.md</field>
+    </record>
+
+    <record id="skill_invoice_from_document" model="sagui.skill">
+        <field name="name">Chat — facturas desde documento</field>
+        <field name="key">invoice-from-document</field>
+        <field name="kind">skill</field>
+        <field name="sequence">6</field>
+        <field name="source_path">primate_sagui/skills/invoice-from-document/SKILL.md</field>
+    </record>
+
 </odoo>
