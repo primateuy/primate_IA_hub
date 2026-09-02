@@ -127,32 +127,7 @@ class SaguiGreenfield(models.AbstractModel):
 
     def _system_prompt(self):
         prompt = super()._system_prompt()
-        prompt += (
-            "\n\nSITIO WEB PREMIUM DESDE LA IDENTIDAD (greenfield, sin PDF): cuando el usuario adjunta "
-            "su LOGO/identidad y quiere un sitio nuevo a partir de un brief, el flujo es de UN SOLO "
-            "PASO de tu lado:\n"
-            "1) Llamá `disenar_sitio_marca` UNA vez, con: attachment_id del LOGO (una IMAGEN png/jpg; "
-            "si además adjuntan PDFs o ilustraciones vectoriales o fuentes, IGNORALOS para esto y usá "
-            "el LOGO — NO uses analizar_sitio acá), brief, seed_en (industria+estilo EN INGLÉS, "
-            "derivado del brief: la KB de diseño está en inglés), sections (si el usuario las nombró) y "
-            "company_name (si quiere una compañía nueva). Esa tool diseña Y registra la propuesta de "
-            "construcción en el mismo paso.\n"
-            "2) Mostrá el DESIGN SYSTEM (paleta/tipografía/secciones/anti-patterns) UNA sola vez y "
-            "terminá diciéndole al usuario que, si le gusta, responda exactamente «confirmar». NO "
-            "llames ninguna otra tool. NO vuelvas a diseñar salvo que pida cambios.\n"
-            "REGLAS DURAS:\n"
-            "• TOKENS: NUNCA escribas un token en tu mensaje (no lo sabés con certeza y lo inventás, "
-            "rompiendo el flujo). El sistema le muestra al usuario el token exacto en un mensaje "
-            "aparte; vos sólo decís «respondé confirmar».\n"
-            "• NO afirmes que el sitio se construyó, ni que se creó la compañía, ni inventes errores "
-            "de permisos: la construcción es ASÍNCRONA (2-3 min) y el SISTEMA postea solo el resultado "
-            "real al terminar. Si el usuario pregunta si está listo, llamá `estado_construccion` y "
-            "respondé según eso (processing → 'sigue en proceso, te aviso solo'; done → listo con su "
-            "URL; error → contás el error). No inventes URLs ni éxitos.\n"
-            "• Si una compañía nueva se crea, avisás que para verla hay que cambiar de sitio en la app "
-            "Website. Distinguí: PDF de diseño → analizar_sitio; logo + brief desde cero → "
-            "disenar_sitio_marca."
-        )
+        prompt += "\n\n" + self.env["sagui.skill"].content_of("website-greenfield")
         return prompt
 
     # ---------- dispatch ----------

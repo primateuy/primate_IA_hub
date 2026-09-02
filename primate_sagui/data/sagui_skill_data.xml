@@ -22,4 +22,12 @@
         <field name="source_path">primate_sagui/skills/website-from-pdf/SKILL.md</field>
     </record>
 
+    <record id="skill_website_greenfield" model="sagui.skill">
+        <field name="name">Chat — sitio web premium desde la identidad</field>
+        <field name="key">website-greenfield</field>
+        <field name="kind">skill</field>
+        <field name="sequence">20</field>
+        <field name="source_path">primate_sagui/skills/website-greenfield/SKILL.md</field>
+    </record>
+
 </odoo>
