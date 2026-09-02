@@ -12,6 +12,7 @@ condición en False NO está. Más la tercera cosa, que es la que degrada en sil
 el asistente quede sin esas instrucciones, sin un solo error en el log.
 """
 
+from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -21,6 +22,11 @@ CLAVES = {
     "website-greenfield": "SITIO WEB PREMIUM DESDE LA IDENTIDAD",
     "spreadsheet-import": "IMPORTACIÓN DE PLANILLAS",
     "mcp-connectors": "CONECTORES (MCP)",
+}
+# Los dos del prompt BASE (no de un mixin). El de whitelist es una PLANTILLA con %s.
+CLAVES_BASE = {
+    "write-whitelist": "ESCRITURA DE DATOS",
+    "invoice-from-document": "FACTURAS DESDE DOCUMENTO",
 }
 CLAVES_DISENADOR = {
     "web-designer-routing": "DISEÑO WEB",
@@ -106,3 +112,102 @@ class TestCondicionEnPython(TransactionCase):
         self.assertTrue(prompt.strip(), "el prompt base sigue estando")
         for marca in CLAVES.values():
             self.assertNotIn(marca, prompt)
+
+
+@tagged("post_install", "-at_install")
+class TestSkillsObligatorias(TransactionCase):
+    """Las reglas de SEGURIDAD no pueden degradar en silencio.
+
+    `content_of` devuelve "" cuando la skill falta, y para una instrucción opcional está bien: el
+    prompt queda más pobre y el chat sigue. Para el trust boundary de los conectores y para la
+    lista de modelos escribibles NO: el chat seguiría andando sin la regla y nadie se enteraría.
+    """
+
+    OBLIGATORIAS = ("mcp-connectors", "write-whitelist")
+
+    def _romper(self):
+        """Simula el .md que no resuelve: ruta mal escrita, archivo borrado, registro faltante."""
+        self.patch(type(self.env["sagui.skill"]), "content", lambda s: "")
+
+    def test_la_skill_obligatoria_falla_fuerte_si_no_resuelve(self):
+        self._romper()
+        for clave in self.OBLIGATORIAS:
+            with self.assertRaises(UserError, msg="«%s» degradó en silencio" % clave):
+                self.env["sagui.skill"].content_of_required(clave)
+
+    def test_el_error_dice_qué_skill_y_qué_ruta(self):
+        self._romper()
+        with self.assertRaises(UserError) as capturado:
+            self.env["sagui.skill"].content_of_required("mcp-connectors")
+        mensaje = str(capturado.exception)
+        self.assertIn("mcp-connectors", mensaje)
+        self.assertIn("OBLIGATORIA", mensaje)
+
+    def test_las_opcionales_siguen_degradando_sin_romper(self):
+        """La distinción es deliberada: no todo tiene que fallar cerrado."""
+        self._romper()
+        self.assertEqual(self.env["sagui.skill"].content_of("website-from-pdf"), "")
+
+    def test_el_trust_boundary_roto_hace_fallar_el_prompt_CON_conectores(self):
+        Assistant = type(self.env["primate.sagui.assistant"])
+        self.patch(Assistant, "_connector_tool_specs",
+                   lambda s: [{"name": "mcp__1__x", "description": "", "input_schema": {}}])
+        self._romper()
+        with self.assertRaises(UserError):
+            self.env["primate.sagui.assistant"]._system_prompt()
+
+    def test_pero_no_afecta_a_una_base_SIN_conectores(self):
+        """Falla cerrado y sólo donde importa: sin conectores configurados, el trust boundary no
+        aplica y una skill rota no puede tirar abajo el chat de alguien que no la usa."""
+        Assistant = type(self.env["primate.sagui.assistant"])
+        self.patch(Assistant, "_connector_tool_specs", lambda s: [])
+        self.patch(Assistant, "_write_whitelist", lambda s: set())
+        self._romper()
+        self.assertTrue(self.env["primate.sagui.assistant"]._system_prompt().strip())
+
+
+@tagged("post_install", "-at_install")
+class TestPromptBase(TransactionCase):
+    """Los dos bloques del prompt base, que no eran de ningún mixin pero seguían el mismo patrón.
+
+    Migrarlos aparte habría dejado dos convenciones para lo mismo: unos fragmentos en .md y otros
+    en literales de Python, sin ninguna razón que los distinga.
+    """
+
+    def _prompt(self, whitelist):
+        self.patch(type(self.env["primate.sagui.assistant"]), "_write_whitelist",
+                   lambda s: whitelist)
+        return self.env["primate.sagui.assistant"]._system_prompt()
+
+    def test_las_dos_skills_del_base_resuelven(self):
+        for clave, marca in CLAVES_BASE.items():
+            contenido = self.env["sagui.skill"].content_of(clave)
+            self.assertTrue(contenido.strip(), "«%s» resuelve a vacío" % clave)
+            self.assertIn(marca, contenido)
+
+    def test_la_plantilla_de_whitelist_conserva_su_marcador(self):
+        """Sin el %s el prompt no diría QUÉ modelos se pueden escribir, y `%` reventaría o no."""
+        self.assertIn("%s", self.env["sagui.skill"].content_of("write-whitelist"))
+
+    def test_la_whitelist_se_interpola_de_verdad(self):
+        prompt = self._prompt({"res.partner", "product.template"})
+        self.assertIn(CLAVES_BASE["write-whitelist"], prompt)
+        self.assertIn("product.template, res.partner", prompt, "ordenada y separada por coma")
+
+    def test_sin_whitelist_no_hay_bloque_de_escritura(self):
+        prompt = self._prompt(set())
+        self.assertNotIn(CLAVES_BASE["write-whitelist"], prompt)
+        self.assertNotIn(CLAVES_BASE["invoice-from-document"], prompt)
+
+    def test_facturas_solo_si_account_move_esta_en_la_whitelist(self):
+        self.assertIn(CLAVES_BASE["invoice-from-document"],
+                      self._prompt({"account.move"}))
+        self.assertNotIn(CLAVES_BASE["invoice-from-document"],
+                         self._prompt({"res.partner"}))
+
+    def test_el_ejemplo_json_del_prompt_de_facturas_sobrevivio_al_archivo(self):
+        """Ese fragmento lleva comillas escapadas dentro del literal de Python; al pasar por un
+        .md tenían que quedar como comillas de verdad, no como \\"."""
+        contenido = self.env["sagui.skill"].content_of("invoice-from-document")
+        self.assertIn('[[0,0,{"product_id": ID, "quantity": N, "price_unit": P}]]', contenido)
+        self.assertNotIn('\\"', contenido)
