@@ -105,4 +105,12 @@
         <field name="source_path">primate_sagui_designer/skills/_chat/web-designer-routing.md</field>
     </record>
 
+    <record id="skill_documents_reference" model="sagui.skill">
+        <field name="name">Chat — referencia de diseño desde Documentos</field>
+        <field name="key">documents-reference</field>
+        <field name="kind">skill</field>
+        <field name="sequence">60</field>
+        <field name="source_path">primate_sagui_designer/skills/_chat/documents-reference.md</field>
+    </record>
+
 </odoo>

@@ -87,13 +87,7 @@ class SaguiDocuments(models.AbstractModel):
         prompt = super()._system_prompt()
         if "documents.document" not in self.env:
             return prompt
-        prompt += (
-            "\n\nREFERENCIA DESDE DOCUMENTOS: si el usuario dice que el diseño/logo está en una "
-            "carpeta de Documentos, usá documents_listar_carpeta con lo que te haya dicho (nombre o "
-            "ruta). Mostrale la clasificación (qué vas a usar como REFERENCIA y qué como ASSETS) y "
-            "pedile confirmación antes de tomar los archivos. Si la carpeta no existe o hay varias "
-            "candidatas, mostrá las opciones y preguntá: NUNCA adivines cuál era.\n"
-        )
+        prompt += "\n\n" + self.env["sagui.skill"].content_of("documents-reference")
         return prompt
 
     def _run_tool(self, name, args, user, channel=None, proposals=None):
