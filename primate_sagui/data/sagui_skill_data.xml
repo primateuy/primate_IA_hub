@@ -30,4 +30,12 @@
         <field name="source_path">primate_sagui/skills/website-greenfield/SKILL.md</field>
     </record>
 
+    <record id="skill_spreadsheet_import" model="sagui.skill">
+        <field name="name">Chat — importación de planillas</field>
+        <field name="key">spreadsheet-import</field>
+        <field name="kind">skill</field>
+        <field name="sequence">30</field>
+        <field name="source_path">primate_sagui/skills/spreadsheet-import/SKILL.md</field>
+    </record>
+
 </odoo>
