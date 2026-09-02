@@ -16,6 +16,10 @@
                 <field name="pregunta_count" string="Preguntas"/>
                 <field name="aprobadas_count" string="Aprobadas"/>
                 <field name="rechazadas_count" string="Rechazadas"/>
+                <field name="verificacion_estado" string="Post-condiciones"
+                    decoration-danger="verificacion_estado == 'fail'"
+                    decoration-success="verificacion_estado == 'pass'"
+                    decoration-warning="verificacion_estado == 'error'"/>
             </list>
         </field>
     </record>
@@ -25,6 +29,10 @@
         <field name="model">sagui.pm.run</field>
         <field name="arch" type="xml">
             <form string="Corrida del gestor">
+                <header>
+                    <button name="action_verificar" type="object" string="Verificar post-condiciones"
+                        class="btn-primary"/>
+                </header>
                 <sheet>
                     <h1><field name="name" readonly="1"/></h1>
                     <group>
@@ -52,6 +60,8 @@
                             <field name="aprobadas_count"/>
                             <field name="rechazadas_count"/>
                             <field name="pendientes_count"/>
+                            <field name="verification_id"/>
+                            <field name="verificacion_estado"/>
                         </group>
                     </group>
                     <notebook>

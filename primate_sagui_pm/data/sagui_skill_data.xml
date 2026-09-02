@@ -14,4 +14,12 @@
         <field name="source_path">primate_sagui_pm/skills/project-management/SKILL.md</field>
     </record>
 
+    <record id="skill_pm_verifier_rubric" model="sagui.skill">
+        <field name="name">Rúbrica del verificador de gestión (post-condiciones)</field>
+        <field name="key">pm-verifier-rubric</field>
+        <field name="kind">checklist</field>
+        <field name="sequence">20</field>
+        <field name="source_path">primate_sagui_pm/skills/project-management/references/verifier-rubric.md</field>
+    </record>
+
 </odoo>

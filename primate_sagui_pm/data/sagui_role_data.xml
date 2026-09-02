@@ -34,13 +34,19 @@ LÍMITES DUROS
 DÓNDE PARÁS
 Entregás el informe y las propuestas. Aprobar es del humano, y decirle "aprobá todo" no es tu trabajo: si una regla te parece lista para automatizarse, lo decís como observación, con los números de esta corrida.</field>
 
-        <field name="skill_ids" eval="[(6, 0, [ref('skill_project_management')])]"/>
+        <field name="skill_ids" eval="[(6, 0, [
+            ref('skill_project_management'),
+            ref('skill_pm_verifier_rubric'),
+        ])]"/>
         <field name="tool_names">auditar_proyectos,buscar_registros,agrupar_registros,describir_modelo</field>
 
-        <!-- El verificador de post-condiciones llega en su propio commit; hasta entonces el rol
-             no declara rúbrica y la verificación queda apagada (si no, la constraint del rol
-             exigiría una rúbrica que todavía no existe). -->
-        <field name="verifier_active" eval="False"/>
+        <!-- Verificación de post-condiciones. El revisor es DETERMINÍSTICO: las post-condiciones
+             son consultas con respuesta exacta, y un revisor que opina sobre esa respuesta sólo
+             agrega la posibilidad de que se equivoque. Cero tokens. -->
+        <field name="verifier_active" eval="True"/>
+        <field name="verifier_rubric_id" ref="skill_pm_verifier_rubric"/>
+        <field name="reviewer_provider">rules</field>
+        <field name="verifier_max_loops">1</field>
     </record>
 
 </odoo>
