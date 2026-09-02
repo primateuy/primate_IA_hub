@@ -121,4 +121,30 @@
         action="sagui_pm_run_action"
         sequence="90"/>
 
+    <record id="view_project_form_pm_note" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.pm.note</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <field name="area_id" position="after">
+                <field name="pm_note_date" invisible="not pm_note"/>
+                <field name="pm_note" invisible="not pm_note"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="primate_area_view_form_pm_note" model="ir.ui.view">
+        <field name="name">primate.area.form.inherit.pm.note</field>
+        <field name="model">primate.area</field>
+        <field name="inherit_id" ref="primate_project_area.primate_area_view_form"/>
+        <field name="arch" type="xml">
+            <sheet position="inside">
+                <group string="Nota de gestión" invisible="not pm_note">
+                    <field name="pm_note_date" readonly="1"/>
+                    <field name="pm_note" readonly="1"/>
+                </group>
+            </sheet>
+        </field>
+    </record>
+
 </odoo>

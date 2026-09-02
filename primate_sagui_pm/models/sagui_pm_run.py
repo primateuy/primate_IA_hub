@@ -17,6 +17,8 @@ class SaguiPmRun(models.Model):
         [("receta", "Receta"), ("automatizacion", "Automatización")],
         string="Origen", required=True, default="receta", index=True)
     recipe_id = fields.Many2one("sagui.recipe", string="Receta", ondelete="set null", index=True)
+    automation_id = fields.Many2one(
+        "sagui.automation", string="Automatización", ondelete="set null", index=True)
     user_id = fields.Many2one(
         "res.users", string="Ejecutó", required=True, index=True, ondelete="cascade",
         default=lambda self: self.env.uid)
@@ -155,6 +157,11 @@ class SaguiPmFinding(models.Model):
     res_name = fields.Char(string="Registro")
     project_id = fields.Many2one("project.project", string="Proyecto", ondelete="set null", index=True)
     area_id = fields.Many2one("primate.area", string="Área", ondelete="set null", index=True)
+    destinatario_id = fields.Many2one(
+        "res.users", string="A quién", ondelete="set null", index=True,
+        help="Quién puede resolver este hallazgo: el responsable del registro, si no el del "
+             "proyecto, si no el del área. Es por quien se agrupa el aviso de la corrida "
+             "continua: una nota por persona, no una por ítem.")
 
     resumen = fields.Text(string="Resumen")
     detalle = fields.Text(string="Detalle")

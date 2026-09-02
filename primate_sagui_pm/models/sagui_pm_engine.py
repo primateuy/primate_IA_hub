@@ -181,7 +181,9 @@ class SaguiPmEngine(models.AbstractModel):
         proyecto = proyecto if proyecto is not None else getattr(registro, "project_id", None)
         if area is None:
             area = getattr(registro, "area_id", None) or (proyecto.area_id if proyecto else None)
+        destinatario = self._destinatario(registro, proyecto, area)
         return {
+            "destinatario_id": destinatario.id if destinatario else False,
             "regla": regla["clave"],
             "bloque": regla["bloque"],
             "riesgo": regla["riesgo"],
@@ -198,6 +200,25 @@ class SaguiPmEngine(models.AbstractModel):
             "valores": valores or {},
             "error": error,
         }
+
+    @api.model
+    def _destinatario(self, registro, proyecto, area):
+        """A QUIÉN se le propone, según la columna "a quién" del playbook.
+
+        En orden: el responsable del registro, si no el del proyecto, si no el del área. Sin esto
+        la corrida continua tendría que mandarle todo a una sola persona, y una bandeja que le
+        llega entera a alguien que sólo puede resolver un cuarto no se mira.
+        """
+        Users = self.env["res.users"]
+        for campo in ("user_ids", "user_id"):
+            valor = getattr(registro, campo, None) if registro else None
+            if valor:
+                return valor[0] if campo == "user_ids" else valor
+        if proyecto and proyecto.user_id:
+            return proyecto.user_id
+        if area and area.user_id:
+            return area.user_id
+        return Users.browse()
 
     # ==================================================================
     #  Bloque A — higiene de la tarea

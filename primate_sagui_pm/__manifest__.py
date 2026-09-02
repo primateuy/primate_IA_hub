@@ -44,6 +44,7 @@ el resto del ecosistema Sagui sigue funcionando igual.
         'data/sagui_skill_data.xml',
         'data/sagui_role_data.xml',
         'data/sagui_recipe_data.xml',
+        'data/sagui_automation_data.xml',
         'views/sagui_pm_run_views.xml',
     ],
     'installable': True,

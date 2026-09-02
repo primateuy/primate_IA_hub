@@ -215,8 +215,9 @@ class TestVerificaTrasAplicar(VerificadorCommon):
         self.assertEqual(bloques.get("C2"), "pass")
         self.assertTrue(tarea.stage_id, "y la tarea quedó efectivamente con etapa")
 
-    def test_rechazar_un_bloque_no_dispara_verificacion(self):
-        """No se aplicó nada: no hay estado nuevo que comprobar ni razón para gastar consultas."""
+    def test_rechazar_un_bloque_no_dispara_una_verificacion_nueva(self):
+        """Toda corrida cierra verificando, así que ya hay una. Lo que rechazar NO tiene que hacer
+        es generar otra: no se aplicó nada y el estado es el mismo que ya se comprobó."""
         receta = self.env.ref("primate_sagui_pm.recipe_auditoria_proyectos")
         proyecto = self._proyecto("Para rechazar", self.tecnica)
         proyecto.task_ids.unlink()
@@ -229,9 +230,12 @@ class TestVerificaTrasAplicar(VerificadorCommon):
         receta._pm_auditar(self.env, {"alcance": "proyecto", "project_id": proyecto.id}, ctx)
         run = ctx["pm_run"]
 
+        del_cierre = run.verification_id
+        self.assertTrue(del_cierre, "la corrida ya cerró verificando")
+
         run.rechazar_bloque(regla="tarea_sin_etapa")
 
-        self.assertFalse(run.verification_id)
+        self.assertEqual(run.verification_id, del_cierre, "no se verificó de nuevo")
 
 
 class TestRubrica(VerificadorCommon):

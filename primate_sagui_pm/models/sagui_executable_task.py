@@ -99,6 +99,7 @@ class SaguiExecutableTask(models.AbstractModel):
         run = env["sagui.pm.run"].create({
             "origen": origen if origen in ("receta", "automatizacion") else "receta",
             "recipe_id": self.id if self._name == "sagui.recipe" else False,
+            "automation_id": self.id if self._name == "sagui.automation" else False,
             "alcance": contexto["alcance"],
             "area_id": contexto["area"].id if contexto["area"] else False,
             "project_id": contexto["proyecto"].id if contexto["proyecto"] else False,
@@ -110,7 +111,8 @@ class SaguiExecutableTask(models.AbstractModel):
         for hallazgo in hallazgos:
             self._pm_registrar(env, run, hallazgo, ctx)
 
-        texto = self._pm_informe(run, contexto)
+        cierre = self._pm_cierre(env, run, ctx)
+        texto = self._pm_informe(run, contexto, cierre)
         run.informe = texto
         return texto
 
@@ -128,6 +130,7 @@ class SaguiExecutableTask(models.AbstractModel):
             "res_name": hallazgo["res_name"],
             "project_id": hallazgo["project_id"],
             "area_id": hallazgo["area_id"],
+            "destinatario_id": hallazgo.get("destinatario_id") or False,
             "resumen": hallazgo["resumen"],
             "detalle": hallazgo["detalle"],
         })
@@ -152,7 +155,11 @@ class SaguiExecutableTask(models.AbstractModel):
         return finding
 
     # ------------------------------------------------------------------ informe
-    def _pm_informe(self, run, contexto):
+    def _pm_cierre(self, env, run, ctx):
+        """Qué se hace al terminar la auditoría. Lo implementa sagui_pm_continuo."""
+        return {}
+
+    def _pm_informe(self, run, contexto, cierre=None):
         """Informe agrupado por regla y por proyecto, en texto plano para el chat.
 
         Lo arma el código y no el modelo: son conteos y nombres de registros, y un conteo
@@ -174,6 +181,7 @@ class SaguiExecutableTask(models.AbstractModel):
                         "%(c)s notas.") % {
             "t": run.finding_count, "a": run.propuesta_count,
             "b": run.pregunta_count, "c": run.nota_count})
+        lineas += self._pm_lineas_cierre(cierre)
 
         for regla, hallazgos in self._pm_agrupar(run.finding_ids, "regla").items():
             primero = hallazgos[0]
@@ -189,6 +197,28 @@ class SaguiExecutableTask(models.AbstractModel):
                     if hallazgo.detalle:
                         lineas.append("       %s" % hallazgo.detalle.strip())
         return "\n".join(lineas)
+
+    @api.model
+    def _pm_lineas_cierre(self, cierre):
+        """El cierre se REPORTA: si la verificación falló o no salió un aviso, tiene que verse en
+        el informe y no sólo en el log."""
+        if not cierre:
+            return []
+        lineas = []
+        if cierre.get("avisos") is not None:
+            lineas.append(_("Avisos enviados: %s (uno por persona).") % cierre["avisos"])
+        notas = cierre.get("notas") or {}
+        if notas:
+            lineas.append(_("Notas de gestión regeneradas: %(p)s proyectos, %(a)s áreas.") % {
+                "p": notas.get("proyectos", 0), "a": notas.get("areas", 0)})
+        verificacion = cierre.get("verificacion") or {}
+        if verificacion.get("infra"):
+            lineas.append(_("Post-condiciones: NO se pudieron verificar (problema de consulta, "
+                            "no de gestión)."))
+        elif verificacion.get("verdict"):
+            lineas.append(_("Post-condiciones: %s.") % (
+                _("en orden") if verificacion["verdict"] == "pass" else _("hay incumplimientos")))
+        return lineas
 
     @api.model
     def _pm_agrupar(self, hallazgos, campo):

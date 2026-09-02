@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Modo b) del rol: la misma auditoría, diaria y desatendida.
+
+        active=False A PROPÓSITO. No se prende con la instalación: se prende cuando el modo a) -la
+        receta, con humano presente- ya se corrió unas cuantas veces y se sabe qué proporción de
+        propuestas se aprueba sin cambios. Una automatización diaria que empieza a llenar una
+        bandeja el primer día, antes de que nadie haya visto qué propone, es la forma más rápida
+        de que nadie vuelva a mirar esa bandeja.
+
+        mode=propose y sin scope de auto: nada se auto-aplica, tampoco acá.
+    -->
+    <data noupdate="1">
+
+        <record id="automation_gestion_continua" model="sagui.automation">
+            <field name="name">Gestión continua de proyectos</field>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="active" eval="False"/>
+            <field name="schedule_type">daily</field>
+            <field name="time_of_day">8.0</field>
+            <field name="mode">propose</field>
+            <field name="allowed_models"></field>
+            <field name="max_records_per_run">0</field>
+            <field name="allow_unlink" eval="False"/>
+            <field name="delivery_discuss" eval="True"/>
+            <field name="instruction">Auditá los proyectos con el playbook del Gestor de Proyectos.
+
+Llamá `auditar_proyectos` UNA sola vez con alcance "todo". No mandes `dias`: se usa el umbral del
+dashboard. La corrida mira sólo lo que cambió desde la anterior; de eso se encarga el sistema.
+
+Devolvé el informe tal cual te lo da la tool, sin recalcular ningún número. Si no hay hallazgos,
+respondé exactamente NADA_QUE_REPORTAR y nada más.</field>
+        </record>
+
+    </data>
+</odoo>
