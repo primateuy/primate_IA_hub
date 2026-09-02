@@ -272,6 +272,60 @@ class TestContratoConElDashboard(ContinuoCommon):
 
         self.assertIsNone(salida["projects"][0]["pm_note"])
 
+    def test_una_extension_que_revienta_no_tumba_el_dashboard_PERO_DEJA_ERROR(self):
+        """Degradar en silencio es el peor de los dos males.
+
+        Si la extensión falla, la nota desaparece del tablero y el dashboard se ve perfecto: nadie
+        se entera de que faltó. Es exactamente la trampa del tour que se saltea y la del override
+        que nunca corre. Así que el dashboard tiene que responder Y tiene que quedar un ERROR con
+        traceback en el log — las dos cosas, y las dos se verifican acá.
+        """
+        Project = self.env["project.project"]
+        if not hasattr(Project, "_primate_extend_payload"):
+            self.skipTest("el dashboard ejecutivo no está instalado en esta base")
+        proyecto = self._proyecto("Con dashboard", self.tecnica, user_id=self.env.user.id)
+        extension = type(self.env["primate.project.dashboard.extension"])
+
+        def revienta(self_e, payload, options=None):
+            raise ValueError("kaboom en la extensión")
+
+        self.patch(extension, "extend", revienta)
+
+        with self.assertLogs(
+                "odoo.addons.primate_project_dashboard.models.project_dashboard_data",
+                "ERROR") as registro:
+            datos = Project.get_dashboard_data({"period": "all"})
+
+        # 1) el dashboard responde igual, con su payload completo
+        self.assertIn("projects", datos)
+        self.assertIn("areas", datos)
+        self.assertIn("kpis", datos)
+        self.assertTrue([f for f in datos["projects"] if f["id"] == proyecto.id])
+        # 2) y el fallo quedó registrado como ERROR, con traceback y nombrando lo que se perdió
+        salida = "\n".join(registro.output)
+        self.assertIn("ERROR", registro.output[0])
+        self.assertIn("kaboom en la extensión", salida, "el traceback tiene que estar")
+        self.assertIn("primate.project.dashboard.extension", salida, "y decir qué falló")
+
+    def test_si_la_extension_revienta_la_nota_NO_aparece_a_medias(self):
+        """Un payload a medio extender sería peor que uno sin extender: se vería una nota vieja
+        en unos proyectos y ninguna en otros, sin forma de saber cuál es cuál."""
+        Project = self.env["project.project"]
+        if not hasattr(Project, "_primate_extend_payload"):
+            self.skipTest("el dashboard ejecutivo no está instalado en esta base")
+        proyecto = self._proyecto("Con nota", self.tecnica, user_id=self.env.user.id)
+        proyecto.write({"pm_note": "Debería no verse", "pm_note_date": fields.Datetime.now()})
+        extension = type(self.env["primate.project.dashboard.extension"])
+        self.patch(extension, "extend",
+                   lambda s, payload, options=None: (_ for _ in ()).throw(ValueError("boom")))
+
+        with self.assertLogs(
+                "odoo.addons.primate_project_dashboard.models.project_dashboard_data", "ERROR"):
+            datos = Project.get_dashboard_data({"period": "all"})
+
+        fila = [f for f in datos["projects"] if f["id"] == proyecto.id][0]
+        self.assertNotIn("pm_note", fila, "sin extensión no hay clave, no una a medias")
+
     def test_la_nota_viaja_en_el_payload_del_dashboard(self):
         Project = self.env["project.project"]
         if not hasattr(Project, "_primate_health_metrics"):
