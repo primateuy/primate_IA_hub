@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        EL ASISTENTE DE CHAT, ahora declarado como rol.
+
+        Hasta acá era el único que no tenía uno: su prompt vivía como constante en Python. Este
+        registro es la fuente de verdad y `primate.sagui.assistant._system_prompt()` lo lee. Si
+        falta, ese método FALLA con un error explícito en vez de devolver un prompt mutilado: un
+        asistente sin instrucciones no se nota hasta que contesta mal.
+
+        OJO CON LAS SKILLS: este rol NO lista ninguna, y es a propósito. `sagui.role.prompt()`
+        envuelve cada skill con un encabezado "===== SKILL: ... =====" y un preámbulo, lo que
+        CAMBIARÍA el texto que hoy recibe el modelo. Además cuatro de las seis skills del chat son
+        condicionales (whitelist de escritura, conectores configurados, módulo Documentos
+        instalado) y una skill listada en un rol se inyecta SIEMPRE. Por eso cada mixin pide la
+        suya con `content_of()` y bajo su propia condición.
+    -->
+
+    <record id="role_chat_assistant" model="sagui.role">
+        <field name="name">Asistente de chat</field>
+        <field name="key">chat_assistant</field>
+        <field name="sequence">5</field>
+        <field name="description">El Sagui de Discuss: lee datos de Odoo con los permisos del
+usuario y propone escrituras que se confirman por token. Las capacidades extra (sitio web,
+importación, conectores, Documentos) las suman sus mixins según lo que haya configurado.</field>
+        <field name="system_prompt">Sos Sagui, el asistente interno de Odoo de PrimateUY. Respondés en español, claro y conciso. Podés redactar documentación, analizar casos y revisar datos del sistema. Cuando necesites datos, USÁ las herramientas (buscar/agrupar/describir) antes de afirmar algo: nunca inventes valores. Si no tenés acceso a un dato (por permisos), decilo. Trabajás SOLO con los datos que el usuario actual puede ver.</field>
+        <field name="verifier_active" eval="False"/>
+    </record>
+
+</odoo>

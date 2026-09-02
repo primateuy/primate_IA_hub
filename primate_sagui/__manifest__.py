@@ -17,6 +17,7 @@
         'security/sagui_automation_rules.xml',
         'data/sagui_user.xml',
         'data/sagui_cron.xml',
+        'data/sagui_role_data.xml',
         'data/sagui_skill_data.xml',
         'data/sagui_recipe_data.xml',
         'views/res_config_settings_views.xml',

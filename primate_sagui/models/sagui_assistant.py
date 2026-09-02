@@ -19,13 +19,10 @@ _logger = logging.getLogger(__name__)
 # Prompt de sistema: instrucción interna para Claude, no es texto de interfaz, así que
 # NO va con _() (además, llamar _() a nivel de módulo dispara un warning porque todavía
 # no hay idioma cargado). El stack de PrimateUY es en español.
-SYSTEM_PROMPT = (
-    "Sos Sagui, el asistente interno de Odoo de PrimateUY. Respondés en español, claro y "
-    "conciso. Podés redactar documentación, analizar casos y revisar datos del sistema. "
-    "Cuando necesites datos, USÁ las herramientas (buscar/agrupar/describir) antes de afirmar "
-    "algo: nunca inventes valores. Si no tenés acceso a un dato (por permisos), decilo. "
-    "Trabajás SOLO con los datos que el usuario actual puede ver."
-)
+# El prompt base del asistente de chat vive en el ROL `chat_assistant` (data/sagui_role_data.xml),
+# no acá. Es la misma regla que el resto del ecosistema: una sola fuente de verdad, editable sin
+# tocar Python. Si el rol no está, `_system_prompt` falla con un error explícito en vez de
+# devolver un prompt mutilado: un asistente sin instrucciones no se nota hasta que contesta mal.
 
 MAX_LIMIT = 100
 # Cantidad de mensajes recientes del canal que se mandan como contexto (acota tokens).
@@ -77,7 +74,7 @@ class SaguiAssistant(models.AbstractModel):
 
     @api.model
     def _system_prompt(self):
-        prompt = SYSTEM_PROMPT
+        prompt = self.env["sagui.role"].get("chat_assistant").system_prompt
         whitelist = self._write_whitelist()
         if whitelist:
             prompt += (
