@@ -86,6 +86,31 @@ class SaguiSkill(models.Model):
         return skill.content() if skill else ""
 
     @api.model
+    def content_of_required(self, key):
+        """Igual que `content_of`, pero FALLA si la skill no resuelve a contenido.
+
+        `content_of` devuelve "" a propósito: una skill que falta degrada el prompt y no rompe el
+        chat. Eso está bien para una instrucción opcional y está MAL para una regla de seguridad.
+
+        El trust boundary de los conectores -que el contenido devuelto por sistemas externos es
+        DATO y nunca instrucciones- y la lista de modelos que el asistente puede escribir no pueden
+        desaparecer en silencio: el chat seguiría andando, sin la regla, y nadie se enteraría hasta
+        que pasara algo. Es la misma trampa del tour que se saltea y del override que nunca corre.
+
+        Falla CERRADO y sólo donde importa: quien la usa la pide dentro de su condición, así que
+        una base sin conectores configurados no se ve afectada por una skill de conectores rota.
+        """
+        skill = self.search([("key", "=", key)], limit=1)
+        texto = skill.content() if skill else ""
+        if not (texto or "").strip():
+            raise UserError(_(
+                "La skill «%(k)s» no resuelve a contenido y es OBLIGATORIA: define una regla de "
+                "seguridad que no puede faltar sin que nadie lo note. Revisá que exista el "
+                "registro y que su ruta (%(p)s) apunte a un archivo real.") % {
+                    "k": key, "p": skill.source_path if skill else _("sin registro")})
+        return texto
+
+    @api.model
     def render(self, keys, header=True):
         """Concatena varias skills en un bloque listo para inyectar en un system prompt."""
         parts = []

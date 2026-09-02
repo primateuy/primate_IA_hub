@@ -438,7 +438,10 @@ class SaguiAssistantConnectors(models.AbstractModel):
     def _system_prompt(self):
         prompt = super()._system_prompt()
         if self._connector_tool_specs():
-            prompt += "\n\n" + self.env["sagui.skill"].content_of("mcp-connectors")
+            # OBLIGATORIA, no `content_of`: este fragmento lleva el TRUST BOUNDARY. Si el .md
+            # no resuelve, el asistente seguiría hablando con sistemas externos SIN la regla de
+            # que su contenido es dato y no instrucciones, y nadie lo notaría.
+            prompt += "\n\n" + self.env["sagui.skill"].content_of_required("mcp-connectors")
         return prompt
 
     def _run_tool(self, name, args, user, channel=None, proposals=None):
