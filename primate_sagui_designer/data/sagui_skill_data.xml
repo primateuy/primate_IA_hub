@@ -89,4 +89,20 @@
         <field name="source_path">primate_sagui_designer/skills/_shared/registers/tech-editorial.md</field>
     </record>
 
+    <!--
+        FRAGMENTOS DE PROMPT del asistente de chat, no procedimientos. A diferencia de las skills
+        de arriba -que el agente LEE y sigue-, estas dos se concatenan literalmente al system
+        prompt cuando su mixin las pide con content_of(). Por eso no llevan frontmatter: todo lo
+        que se escriba ahí le llega al modelo tal cual. Y por eso NO cuelgan del rol: la de
+        Documentos es condicional (sólo si el módulo Documentos está instalado).
+    -->
+
+    <record id="skill_web_designer_routing" model="sagui.skill">
+        <field name="name">Chat — enrutado hacia el diseñador web</field>
+        <field name="key">web-designer-routing</field>
+        <field name="kind">skill</field>
+        <field name="sequence">50</field>
+        <field name="source_path">primate_sagui_designer/skills/_chat/web-designer-routing.md</field>
+    </record>
+
 </odoo>

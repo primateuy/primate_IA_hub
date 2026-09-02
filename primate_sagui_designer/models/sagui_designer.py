@@ -181,13 +181,7 @@ class SaguiDesigner(models.AbstractModel):
 
     def _system_prompt(self):
         prompt = super()._system_prompt()
-        prompt += (
-            "\n\nDISEÑO WEB: para cualquier pedido de sitio/landing/rediseño usá disenar_web. No "
-            "elijas vos el flujo: el rol enruta según haya o no referencia. Mostrale al usuario la "
-            "propuesta (concepto, paleta con roles, tipografías, ritmo de secciones y firma) y "
-            "esperá que responda «confirmar». Si el usuario dice que la referencia está en "
-            "Documentos, primero documents_listar_carpeta.\n"
-        )
+        prompt += "\n\n" + self.env["sagui.skill"].content_of("web-designer-routing")
         return prompt
 
     def _run_tool(self, name, args, user, channel=None, proposals=None):
