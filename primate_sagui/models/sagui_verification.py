@@ -160,10 +160,16 @@ class SaguiVerification(models.Model):
         try:
             items = self._collect(collector, target, evidence)
             if not items:
-                raise UserError(_("No hay evidencia para verificar: sin capturas no hay revisión."))
+                raise UserError(_(
+                    "No hay evidencia para verificar. La evidencia puede ser una captura "
+                    "(attachment_id) o texto (una consulta y su resultado), pero algo tiene "
+                    "que haber."))
             dims = self._measure_evidence(items)
             rec.write({
-                "evidence_ids": [(6, 0, [i["attachment_id"] for i in items])],
+                # Sólo los items de imagen tienen adjunto; los de texto viven en la evidencia
+                # misma y no generan un ir.attachment por cada consulta.
+                "evidence_ids": [(6, 0, [i["attachment_id"] for i in items
+                                         if i.get("attachment_id")])],
                 "evidence_labels": ", ".join(i.get("label") or "" for i in items),
                 "evidence_dims_json": json.dumps(dims, ensure_ascii=False),
             })
@@ -178,7 +184,7 @@ class SaguiVerification(models.Model):
                            "notes": _("Evidencia degradada: %s") % detalle})
                 return {"verdict": "error", "error": _(
                     "No verifiqué: la evidencia no sirve para revisar (%s). Es un problema de "
-                    "captura, NO un defecto del diseño.") % detalle,
+                    "RECOLECCIÓN, NO un defecto de lo verificado.") % detalle,
                     "findings": [], "verification_id": rec.id,
                     "evidence_ids": rec.evidence_ids.ids, "infra": True}
             raw = self._review(provider, reviewer.get("model"), rec.rubric_text, context, items)
@@ -230,6 +236,22 @@ class SaguiVerification(models.Model):
         """
         salida = []
         for item in items or []:
+            # EVIDENCIA DE TEXTO (una consulta y su resultado). No tiene ancho ni alto, así que
+            # medirla no significa nada: nunca está "degradada" por dimensiones. Lo que sí la
+            # invalida es que la consulta no haya podido correr -dominio inválido, modelo que no
+            # existe-, y eso lo declara el recolector con `error`. Es el equivalente exacto de la
+            # captura escalada: un problema de RECOLECCIÓN, que no es un defecto de lo verificado.
+            if not item.get("attachment_id"):
+                error = (item.get("check") or {}).get("error") or item.get("error")
+                salida.append({
+                    "attachment_id": False, "label": item.get("label") or "", "kind": "text",
+                    "width": 0, "height": 0, "expected_width": 0,
+                    "degraded": bool(error), "truncated": bool(item.get("truncated")),
+                    "page_height": 0,
+                    "detail": (_("«%(label)s»: %(e)s") % {"label": item.get("label") or "",
+                                                          "e": error}) if error else "",
+                })
+                continue
             att = self.env["ir.attachment"].sudo().browse(item.get("attachment_id")).exists()
             ancho = alto = 0
             if att:
@@ -255,7 +277,7 @@ class SaguiVerification(models.Model):
                     "se guardó escalada y no se puede revisar espaciado ni alineación sobre eso"
                 ) % {"label": etiqueta, "w": ancho, "h": alto, "e": esperado}
             salida.append({
-                "attachment_id": item.get("attachment_id"), "label": etiqueta,
+                "attachment_id": item.get("attachment_id"), "label": etiqueta, "kind": "image",
                 "width": ancho, "height": alto, "expected_width": esperado,
                 "degraded": degradada, "truncated": bool(item.get("truncated")),
                 "page_height": item.get("page_height") or 0, "detail": detalle,
@@ -307,10 +329,20 @@ class SaguiVerification(models.Model):
         clean = []
         for item in items[:MAX_EVIDENCE]:
             att_id = item.get("attachment_id")
-            att = self.env["ir.attachment"].sudo().browse(att_id).exists() if att_id else None
-            if not att:
+            if att_id:
+                att = self.env["ir.attachment"].sudo().browse(att_id).exists()
+                if not att:
+                    continue
+                clean.append({"label": item.get("label") or att.name or "",
+                              "attachment_id": att.id, "kind": "image"})
                 continue
-            clean.append({"label": item.get("label") or att.name or "", "attachment_id": att.id})
+            # Evidencia TEXTUAL: la consulta y su resultado, sin generar un adjunto por cada una.
+            # `check` es opcional y lo usa el revisor determinístico (ver _review_rules).
+            texto = (item.get("text") or "").strip()
+            if not texto and not item.get("check"):
+                continue
+            clean.append({"label": item.get("label") or "", "text": texto, "kind": "text",
+                          "check": item.get("check") or {}})
         return clean
 
     # ==================================================================
@@ -318,13 +350,19 @@ class SaguiVerification(models.Model):
     # ==================================================================
     @api.model
     def _review(self, provider, model, rubric_text, context, items):
-        blocks = self._build_blocks(rubric_text, context, items)
+        """Contrato ÚNICO de los adaptadores: (model, rubric_text, context, items) -> texto JSON.
+
+        Todos reciben lo mismo y cada uno decide qué hacer con eso. Antes el dispatch armaba los
+        bloques de mensaje ANTES de saber quién iba a revisar, lo que obligaba a que todo revisor
+        fuera un modelo de lenguaje. El revisor determinístico no manda mensajes: lee los
+        resultados de las consultas que trae la evidencia.
+        """
         handler = getattr(self, "_review_%s" % provider, None)
         if not handler:
             raise UserError(_(
                 "Proveedor de revisión no soportado: %s. Implementá _review_%s en "
                 "sagui.verification.") % (provider, provider))
-        return handler(model, blocks)
+        return handler(model, rubric_text, context, items)
 
     @api.model
     def _build_blocks(self, rubric_text, context, items):
@@ -334,6 +372,10 @@ class SaguiVerification(models.Model):
         """
         blocks = []
         for item in items:
+            if not item.get("attachment_id"):
+                blocks.append({"type": "text", "text": "Evidencia: %s\n%s" % (
+                    item.get("label") or "", item.get("text") or "")})
+                continue
             att = self.env["ir.attachment"].sudo().browse(item["attachment_id"])
             raw = att.raw or b""
             if not raw or len(raw) > MAX_EVIDENCE_BYTES:
@@ -354,8 +396,9 @@ class SaguiVerification(models.Model):
         return blocks
 
     @api.model
-    def _review_anthropic(self, model, blocks):
+    def _review_anthropic(self, model, rubric_text, context, items):
         """Revisión con Claude en request AISLADA (sin historial, sin tools, sin el HTML)."""
+        blocks = self._build_blocks(rubric_text, context, items)
         icp = self.env["ir.config_parameter"].sudo()
         model = model or icp.get_param("primate_sagui.reviewer_model") or None
         data = self.env["primate.ai.connector"].call(
@@ -365,6 +408,67 @@ class SaguiVerification(models.Model):
         )
         return "".join(b.get("text", "") for b in (data.get("content") or [])
                        if b.get("type") == "text")
+
+    @api.model
+    def _review_rules(self, model, rubric_text, context, items):
+        """Revisor DETERMINÍSTICO: cero tokens, cero alucinación.
+
+        Para post-condiciones de datos, un revisor que opina es estrictamente peor que una
+        consulta que cuenta. "¿Hay tareas abiertas sin responsable?" tiene respuesta exacta, y
+        pedirle a un modelo que la lea de un texto sólo agrega la posibilidad de que diga que no
+        cuando la respuesta es que sí. Acá no hay request: se leen los resultados que el recolector
+        ya calculó y se emiten con el MISMO contrato de salida que usa el revisor de lenguaje, así
+        el resto del flujo (parseo, hallazgos, veredicto) no distingue quién revisó.
+
+        Cada item de evidencia trae su `check`:
+
+            {"id": "C1",                  # id del ítem de rúbrica
+             "titulo": "...",             # qué se comprobó
+             "ok": True/False,            # si la post-condición se cumple
+             "count": 3,                  # cuántos registros la violan
+             "ids": [12, 44, 77],         # cuáles (se muestran los primeros)
+             "detalle": "...",            # qué se vio, concreto y observable
+             "fix": "...",                # el cambio mínimo que lo corrige
+             "error": ""}                 # si la consulta NO pudo correr
+
+        Un `error` NO llega hasta acá: `_measure_evidence` ya lo marcó como evidencia degradada y
+        `run()` cortó con veredicto de infra. Un fallo de recolección no es un fallo de lo
+        verificado, y es la misma regla que ya aplicaba a una captura escalada.
+        """
+        findings, blocks = [], {}
+        for item in items:
+            check = item.get("check") or {}
+            ident = str(check.get("id") or item.get("label") or "").strip()
+            if not ident:
+                continue
+            ok = bool(check.get("ok"))
+            blocks[ident] = "pass" if ok else "fail"
+            if ok:
+                continue
+            titulo = (check.get("titulo") or ident).strip()
+            ids = list(check.get("ids") or [])
+            detalle = (check.get("detalle") or "").strip() or _(
+                "%(n)s registros no cumplen «%(t)s». Ids: %(ids)s") % {
+                    "n": check.get("count") or len(ids), "t": titulo, "ids": ids[:10]}
+            findings.append({
+                "severity": "FAIL",
+                "rubric": ident,
+                "section": titulo,
+                "breakpoint": None,
+                "seen": detalle,
+                # Sin `fix` el hallazgo se descartaría por vago en _parse, así que siempre hay uno.
+                "fix": (check.get("fix") or "").strip() or _(
+                    "Corregir los %(n)s registros listados.") % {
+                        "n": check.get("count") or len(ids)},
+                "fix_kind": "regen",
+                "token": None,
+                "token_value": None,
+            })
+        return json.dumps({
+            "verdict": "fail" if findings else "pass",
+            "blocks": blocks,
+            "findings": findings,
+        }, ensure_ascii=False, default=str)
 
     # ==================================================================
     #  Parseo de hallazgos

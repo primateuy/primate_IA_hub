@@ -13,6 +13,10 @@ from odoo.exceptions import UserError
 # generado ni el hilo). Agregar otro proveedor = un adaptador en sagui.verification y una opción acá.
 REVIEWER_PROVIDERS = [
     ("anthropic", "Anthropic (Claude)"),
+    # Determinístico: no manda ninguna request. Es el correcto cuando las post-condiciones son
+    # consultas con respuesta exacta ("¿hay tareas abiertas sin responsable?"): un revisor que
+    # opina sólo agrega la posibilidad de que diga que no cuando la respuesta es que sí.
+    ("rules", "Determinístico (post-condiciones)"),
 ]
 
 
