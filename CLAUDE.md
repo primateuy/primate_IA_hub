@@ -162,6 +162,30 @@ costo se va en tokens de entrada. Palancas ya implementadas:
      La página no carga el JS, el tour se cuelga esperando `isTourReady` y muere por timeout.
      Se copia con `rsync -a "$FS/<origen>/" "$FS/<clon>/"`.
 
+- **El conteo de la suite: `stats` y `result` NO cuentan lo mismo.** Al final de una corrida hay
+  dos números y son distintos a propósito:
+
+  ```
+  odoo.tests.stats:  primate_sagui_pm: 72 tests 3.67s 9795 queries
+  odoo.tests.result: 0 failed, 0 error(s) of 183 tests
+  ```
+
+  `stats` cuenta **métodos + 2 × clases**: `odoo/tests/suite.py` le inventa un id sintético al
+  `setUpClass` y al `tearDownClass` de cada clase para poder medir cuánto tarda el setup, y esos
+  entran al mismo diccionario que los tests. `result` cuenta métodos ejecutados de verdad
+  (`testsRun`). Verificado en los cuatro módulos: la fórmula cierra exacto.
+
+  **El número que se reporta es el de `result`.** Sumar las líneas de `stats` de varios módulos
+  infla el total y no es comparable con nada. Para el desglose por módulo, lo honesto es contar
+  los "Starting":
+
+  ```bash
+  grep "Starting " <log> | grep -oE "addons\.[a-z_]+\.tests" | sort | uniq -c
+  ```
+
+  Ojo con ese grep: `Starting post tests` (el arranque de la fase post_install) y algún log de
+  otro addon también dicen "Starting", así que hay que filtrar por `addons.<modulo>.tests`.
+
 - **Traducciones**: en Odoo 19 no existe `--i18n-export`; es el subcomando
   `odoo-bin i18n export -c <conf> -d <db> -l es_UY -o <archivo.po> <modulo>`. Y antes de
   exportar hay que **cargar el idioma y actualizar el módulo** (`i18n loadlang -l es_UY`,
