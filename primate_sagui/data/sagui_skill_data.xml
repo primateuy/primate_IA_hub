@@ -38,4 +38,12 @@
         <field name="source_path">primate_sagui/skills/spreadsheet-import/SKILL.md</field>
     </record>
 
+    <record id="skill_mcp_connectors" model="sagui.skill">
+        <field name="name">Chat — conectores MCP y trust boundary</field>
+        <field name="key">mcp-connectors</field>
+        <field name="kind">skill</field>
+        <field name="sequence">40</field>
+        <field name="source_path">primate_sagui/skills/mcp-connectors/SKILL.md</field>
+    </record>
+
 </odoo>
