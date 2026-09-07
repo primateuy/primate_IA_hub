@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Primate Sagui — Diseñador Web Odoo',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Productivity/AI',
     'summary': 'Rol de diseñador web para Sagui: plan de diseño, generación por sección y '
                'verificación visual con revisión independiente',
