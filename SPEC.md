@@ -15,6 +15,8 @@ conector). Completá los `TODO` y verificá los puntos marcados como **[VERIFICA
   registro actual como contexto.
 - **Fase 3:** tools de escritura (create/write) con confirmación en el chat y whitelist.
 
+
+
 No implementar fase 2/3 todavía.
 
 ---

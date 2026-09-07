@@ -27,7 +27,7 @@ _FENCE_RE = re.compile(r"^\s*```(?:html|css)?\s*|\s*```\s*$", re.IGNORECASE)
 # @import malformado -> el navegador no parsea el stylesheet y NADA se estiliza. Las fuentes se
 # cargan con un <link> en el HTML (donde el ';' no rompe nada). El regex consume el url(...)/string
 # COMPLETO (con sus ';' internos) y recién después el ';' final — si no, deja basura que rompe la
-# primera regla.
+# primera regla. aca ~/Desktop/Odoo/Desarrollos Documentos/PRM(Primate Repo Manager)/ te deje la Private key
 _IMPORT_RE = re.compile(
     r"""@import\s+(?:url\([^)]*\)|"[^"]*"|'[^']*')[^;]*;""", re.IGNORECASE)
 WRAPPER = "brandsite"  # namespace único de todo el CSS de marca
